@@ -13,7 +13,7 @@ Meta files are structured JSON covering:
   - Forbidden patterns (things the LLM must never recommend)
 
 How to add a new version:
-  1. Copy ``docs/meta/4.3.4.json`` to ``docs/meta/X.Y.Z.json``
+  1. Copy ``docs/meta/4.4.6.json`` to ``docs/meta/X.Y.Z.json``
   2. Update weapon verdicts, fleet templates, economy rules from patch notes
   3. Test in a real game — don't invent meta from patch notes alone
   4. The engine auto-detects the version from the save file and loads the right meta
@@ -42,7 +42,7 @@ def load_meta(version: str) -> dict:
 
     meta = _try_load(version)
     if meta is None:
-        # Try major.minor match (e.g. 4.3.4 → 4.3)
+        # Try major.minor match (e.g. 4.4.6 → 4.3)
         parts = version.split(".")
         if len(parts) >= 2:
             fallback = f"{parts[0]}.{parts[1]}"
@@ -79,7 +79,7 @@ def _try_load(version: str) -> dict | None:
 
 
 def _try_load_prefix(prefix: str) -> dict | None:
-    """Load the highest version matching a prefix (e.g. '4.3' matches '4.3.4')."""
+    """Load the highest version matching a prefix (e.g. '4.3' matches '4.4.6')."""
     if not _META_DIR.exists():
         return None
     matches = sorted(
@@ -106,6 +106,8 @@ def _load_latest() -> dict | None:
 def _read_meta(path: Path) -> dict:
     raw = path.read_text(encoding="utf-8")
     meta = json.loads(raw)
+    if not isinstance(meta, dict):
+        raise ValueError(f"Meta file {path} must contain a JSON object")
     meta["_source"] = path.name
     return meta
 

@@ -1,8 +1,8 @@
-﻿# Stellaris Overmind — LLM‑Driven AI Overhaul for Stellaris 4.3.4
+# Stellaris Overmind — LLM‑Driven AI Overhaul for Stellaris 4.4.6
 
 A **non‑cheating, expert‑level Stellaris AI** powered by a local LLM.
 
-The AI plays within Stellaris 4.3.4 rules, respects fog‑of‑war, adapts to
+The AI plays within Stellaris 4.4.6 rules, respects fog‑of‑war, adapts to
 ethics/civics/traits/origins, and makes macro‑strategic decisions like a
 strong human player — live, without pausing the game.
 
@@ -16,7 +16,7 @@ strong human player — live, without pausing the game.
 - **Multi-agent council** — domestic + military sub-agents with government-weighted arbitration
 - **Strategic planner** — periodic long-term assessments injected into decision prompts
 - **Hybrid LLM provider** — local (Ollama/LM Studio/vLLM), online (OpenRouter/Azure Foundry), or auto-failover hybrid
-- **AI personality system** — 4 Clausewitz personality variants (balanced/aggressive/defensive/full assault) with 4.3.4 weapon meta
+- **AI personality system** — 4 Clausewitz personality variants (balanced/aggressive/defensive/full assault) with 4.4.6 weapon meta
 - **Policy enforcement** — Academic Privilege, war economy, cooperative stance applied automatically
 - **Auto-detect empire** — reads ethics/civics/origin/government from save file (no manual config needed)
 - **Live console dashboard** — Rich TUI with token rates, decision stats, suggestion panel, keyboard controls
@@ -26,7 +26,7 @@ strong human player — live, without pausing the game.
 ## Prerequisites
 
 - **Python 3.11+** — [python.org](https://www.python.org/downloads/)
-- **Stellaris 4.3.4** — Steam (non-Ironman saves recommended for AI mode)
+- **Stellaris 4.4.6** — Steam (non-Ironman saves recommended for AI mode)
 - **GPU with ≥6GB VRAM** — for Qwen 7B Q4 via Ollama (or use a cloud API instead)
 
 ---
@@ -256,7 +256,7 @@ structured JSON.
 python scripts/scaffold_meta.py --detect
 
 # For a specific version (copies from existing):
-python scripts/scaffold_meta.py 4.5.0 --from 4.3.4
+python scripts/scaffold_meta.py 4.5.0 --from 4.4.6
 
 # List available meta versions:
 python scripts/scaffold_meta.py --list
@@ -309,8 +309,8 @@ Stellaris community. Thanks to the following people, projects, and tools.
 
 ### Stellaris community (meta & strategy)
 - **[stellaris-build.com](https://stellaris-build.com)** — community build database + tier lists
-- **[Aktion — "We Tested 200+ Ship Builds"](https://www.youtube.com/watch?v=KRlRjbOg0Ag)** — ship & combat meta source for `docs/META_4.3.4.md`
-- **[KaelGotRice — "4.3 Meta: Strongest Builds"](https://www.youtube.com/watch?v=KsQA9-SrKD8)** — build & origin meta source for `docs/META_4.3.4.md`
+- **[Aktion — "We Tested 200+ Ship Builds"](https://www.youtube.com/watch?v=KRlRjbOg0Ag)** — ship & combat meta source for `docs/META_4.4.6.md`
+- **[KaelGotRice — "4.3 Meta: Strongest Builds"](https://www.youtube.com/watch?v=KsQA9-SrKD8)** — build & origin meta source for `docs/META_4.4.6.md`
 - **Stefan Anon** (YouTube) — economy/empire optimization guides
 - **MontuPlays** (YouTube) — patch breakdowns and meta analysis
 - **r/Stellaris** and the Stellaris Modding Den (Discord) — countless tips

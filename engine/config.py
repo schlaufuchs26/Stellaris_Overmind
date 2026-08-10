@@ -64,6 +64,7 @@ class BridgePathConfig:
 
     # Directive output directory (mod reads this)
     bridge_dir: str = ""
+    command_dir: str = ""  # optional Stellaris user-data directory for AI event commands
     poll_interval_s: float = 2.0
 
 
@@ -224,6 +225,7 @@ def _load_toml(path: Path, cfg: OvermindConfig) -> OvermindConfig:
         cfg.bridge.save_dir = br.get("save_dir", cfg.bridge.save_dir)
         cfg.bridge.player_name = br.get("player_name", cfg.bridge.player_name)
         cfg.bridge.bridge_dir = br.get("bridge_dir", cfg.bridge.bridge_dir)
+        cfg.bridge.command_dir = br.get("command_dir", cfg.bridge.command_dir)
         cfg.bridge.poll_interval_s = br.get("poll_interval_s", cfg.bridge.poll_interval_s)
 
     # Empire section

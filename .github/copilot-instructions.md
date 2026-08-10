@@ -1,7 +1,7 @@
-﻿# Copilot Instructions — Stellaris Overmind
+# Copilot Instructions — Stellaris Overmind
 
 This file is the authority on all coding standards, architecture, and conventions for the
-Stellaris 4.3.4 LLM-Driven AI Overhaul project.
+Stellaris 4.4.6 LLM-Driven AI Overhaul project.
 
 Read `docs/PROJECT_OVERVIEW.md` for the full project specification.
 Read `CLAUDE.md` for the complete standards reference (shared with Claude Code).
@@ -11,7 +11,7 @@ Read `CLAUDE.md` for the complete standards reference (shared with Claude Code).
 ## Project Summary
 
 **Stellaris Overmind** is a non-cheating, expert-level Stellaris AI powered by a local LLM.
-The AI plays within Stellaris 4.3.4 rules, respects fog-of-war, adapts to ethics/civics/traits/origins,
+The AI plays within Stellaris 4.4.6 rules, respects fog-of-war, adapts to ethics/civics/traits/origins,
 and makes macro-strategic decisions like a strong human player — live, without pausing the game.
 
 ---
@@ -25,14 +25,14 @@ and makes macro-strategic decisions like a strong human player — live, without
    `EXPAND`, `BUILD_FLEET`, `IMPROVE_ECONOMY`, `FOCUS_TECH`, `DIPLOMACY`, `ESPIONAGE`,
    `PREPARE_WAR`, `DEFEND`, `CONSOLIDATE`, `COLONIZE`, `BUILD_STARBASE`.
 
-3. **Version Lock** — All mechanics, rulesets, and meta must match Stellaris `4.3.4`.
+3. **Version Lock** — All mechanics, rulesets, and meta must match Stellaris `4.4.6`.
    Do not reference mechanics from other versions.
 
 4. **No God Mode** — The LLM receives only known fleets, known borders, known diplomacy,
    known planets, known economy, and intel-level-appropriate enemy info.
 
 5. **Meta is Curated** — The LLM applies meta; it does not invent meta.
-   All meta entries in `docs/META_4.3.4.md` are tested in real 4.3.4 gameplay.
+   All meta entries in `docs/META_4.4.6.md` are tested in real 4.4.6 gameplay.
 
 6. **Dual Mode** — Player mode shows suggestions only (no direct execution).
    AI mode steers native AI via personality overrides + stat modifiers
@@ -68,7 +68,7 @@ and makes macro-strategic decisions like a strong human player — live, without
 |----------|---------|
 | `docs/PROJECT_OVERVIEW.md` | Full project specification |
 | `docs/RULESET_SPEC.md` | Ruleset schema, hierarchy, validation rules |
-| `docs/META_4.3.4.md` | Curated patch meta (early/mid/late game, origin-specific, forbidden) |
+| `docs/META_4.4.6.md` | Curated patch meta (early/mid/late game, origin-specific, forbidden) |
 | `docs/PERSONALITY_SYSTEM.md` | Leader shards, government weighting, decision synthesis |
 | `docs/EXPORTER_SPEC.md` | State snapshot format, intel filtering, export triggers |
 | `docs/EXECUTOR_SPEC.md` | Action mapping, validation layer, execution timing |

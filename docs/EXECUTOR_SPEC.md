@@ -1,4 +1,4 @@
-﻿# Stellaris 4.3.4 – Action Executor Specification
+# Stellaris 4.4.6 – Action Executor Specification
 The executor influences Stellaris’ native AI via Clausewitz personality overrides, stat
 modifiers, and automated policy enforcement.  It does **not** bypass the native AI’s
 build queues, research picks, or fleet construction — those remain under native control.
@@ -43,8 +43,11 @@ BUILD_STARBASE
 ## 3. Execution Pipeline
 
 ### 3.1 AI Mode: Directive → Personality Override
-The Python engine writes a directive JSON per AI country.
-The mod event reads the directive and:
+The Python engine writes a directive JSON audit record per AI country and, when a
+command directory is configured, an atomic `overmind_directive_<country_id>.command`
+file. `scripts/auto_execute.py` accepts only the generated
+`event overmind.<action-event> <country_id>` command and injects it directly into
+the console. The target country event then:
 1. Clears all previous modifiers and stance flags (`overmind_clear_modifiers`)
 2. Sets the new personality stance flag (aggressive / defensive / full assault)
 3. Applies a temporary stat modifier (180 days) that nudges native AI priorities
@@ -52,6 +55,10 @@ The mod event reads the directive and:
 
 Stellar’s native AI then uses these personality weights + modifiers to make its own
 micro-decisions (build order, research queue, fleet composition, colonisation order).
+
+The transport never runs arbitrary command files, calls `play`, grants resources, or
+adds districts/buildings. If the injector is not running, the JSON audit record is
+preserved and the directive remains pending.
 
 ### 3.2 Player Mode: Directive → Suggestion
 The engine writes `overmind_suggestion.txt` with:
@@ -61,12 +68,11 @@ The engine writes `overmind_suggestion.txt` with:
 
 No console commands or mod effects are executed for the player.
 
-### 3.3 Mod Event (Monthly Pulse)
-Event `overmind.100` fires on `on_monthly_pulse_country`:
-1. Checks `has_country_flag = overmind_directive_ready` (per-country, not global)
-2. Reads `overmind_action` variable (country-scoped)
-3. Calls the matching scripted effect
-4. Clears the flag + variable
+### 3.3 Mod Event
+The injected action event `overmind.101` through `overmind.111` targets one country
+ID, requires a default AI country, marks it Overmind-controlled, and calls the
+matching scripted effect. Event `overmind.100` remains available for legacy
+flag-and-variable integrations.
 
 ### 3.3 Scripted Effect
 Each action effect:
@@ -126,7 +132,8 @@ Reject actions if:
 
 ## 6. Execution Timing
 - Personality overrides applied live via mod events (no pausing)
-- AI empires: directive JSON written per country; mod reads on monthly pulse
+- AI empires: the command injector applies one targeted event per pending directive
+  as soon as Stellaris is available; the legacy monthly event remains supported
 - Player: suggestion displayed after each LLM decision (~3s with Ollama)
 - Cooldown: mod event fires monthly; engine polls every 2s for new saves
 - Empire config auto-detected from save file (no manual setup needed)

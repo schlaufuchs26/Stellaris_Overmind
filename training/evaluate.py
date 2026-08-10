@@ -6,7 +6,7 @@ scores the outputs across multiple dimensions:
 
   1. **Action Quality** — does the model pick strategically sound actions?
   2. **FoW Compliance** — does the model reference hidden information?
-  3. **Meta Alignment** — does the model follow 4.3.4 meta rules?
+  3. **Meta Alignment** — does the model follow 4.4.6 meta rules?
   4. **Format Compliance** — does the model produce parseable ACTION/TARGET/REASON?
   5. **Whitelist Compliance** — are all actions from the allowed list?
 
@@ -27,13 +27,10 @@ from datetime import datetime
 from pathlib import Path
 
 from engine.decision_engine import build_prompt, parse_llm_response
+from engine.meta_loader import load_meta
 from engine.personality_shards import build_personality
 from engine.ruleset_generator import ALLOWED_ACTIONS, generate_ruleset
-from engine.validator import (
-    FORBIDDEN_FLEET_PATTERNS,
-    FORBIDDEN_WEAPONS,
-    validate_directive,
-)
+from engine.validator import validate_directive
 
 log = logging.getLogger(__name__)
 
@@ -123,7 +120,7 @@ SCENARIOS: list[EvalScenario] = [
             "government": "Oligarchy",
         },
         state={
-            "version": "4.3.4",
+            "version": "4.4.6",
             "year": 2210, "month": 3,
             "empire": {"name": "Test", "ethics": ["Materialist", "Xenophile"],
                        "civics": ["Technocracy"], "origin": "Prosperous Unification",
@@ -148,7 +145,7 @@ SCENARIOS: list[EvalScenario] = [
             "government": "Dictatorial",
         },
         state={
-            "version": "4.3.4",
+            "version": "4.4.6",
             "year": 2230, "month": 6,
             "empire": {"name": "Warlike", "ethics": ["Militarist", "Xenophobe"],
                        "civics": ["Distinguished Admiralty"],
@@ -176,7 +173,7 @@ SCENARIOS: list[EvalScenario] = [
             "government": "Democracy",
         },
         state={
-            "version": "4.3.4",
+            "version": "4.4.6",
             "year": 2250, "month": 1,
             "empire": {"name": "Peaceful", "ethics": ["Pacifist", "Xenophile"],
                        "civics": ["Diplomatic Corps"],
@@ -204,7 +201,7 @@ SCENARIOS: list[EvalScenario] = [
             "government": "Oligarchy",
         },
         state={
-            "version": "4.3.4",
+            "version": "4.4.6",
             "year": 2215, "month": 1,
             "empire": {"name": "Void Empire", "ethics": ["Fanatic Materialist", "Xenophobe"],
                        "civics": ["Technocracy", "Citizen Service"],
@@ -229,7 +226,7 @@ SCENARIOS: list[EvalScenario] = [
             "government": "Oligarchy",
         },
         state={
-            "version": "4.3.4",
+            "version": "4.4.6",
             "year": 2380, "month": 1,
             "empire": {"name": "Late Empire",
                        "ethics": ["Fanatic Militarist", "Materialist"],
@@ -259,7 +256,7 @@ SCENARIOS: list[EvalScenario] = [
             "government": "Democracy",
         },
         state={
-            "version": "4.3.4",
+            "version": "4.4.6",
             "year": 2240, "month": 6,
             "empire": {"name": "Crashing", "ethics": ["Egalitarian", "Materialist"],
                        "civics": ["Meritocracy"],
@@ -345,11 +342,14 @@ def evaluate_scenario(
     ]
     result.fow_clean = not any(v in reason_lower for v in fow_violations)
 
-    # Meta check — should not recommend forbidden weapons/patterns
+    # Meta check — only reject patterns forbidden by the active meta pack.
+    meta = load_meta(str(ruleset.get("version", "")))
+    forbidden_weapons = meta.get("forbidden_weapons", [])
+    forbidden_patterns = meta.get("forbidden_fleet_patterns", [])
     result.meta_clean = not any(
-        w in reason_lower for w in FORBIDDEN_WEAPONS
+        weapon in reason_lower for weapon in forbidden_weapons
     ) and not any(
-        p in reason_lower for p in FORBIDDEN_FLEET_PATTERNS
+        pattern in reason_lower for pattern in forbidden_patterns
     )
 
     # Full validation
@@ -478,7 +478,11 @@ def main() -> None:
         description="Evaluate a model against Stellaris decision benchmarks",
     )
     parser.add_argument("--model", default="", help="Model path or name")
-    parser.add_argument("--provider", default="stub", help="Provider: stub | qwen-vllm | openai-compat")
+    parser.add_argument(
+        "--provider",
+        default="stub",
+        help="Provider: stub | qwen-vllm | openai-compat",
+    )
     parser.add_argument("--base-url", default="http://localhost:8000")
     parser.add_argument("--output", type=Path, default=Path("training/eval_results"))
     parser.add_argument("--wandb", action="store_true", help="Log metrics to wandb")

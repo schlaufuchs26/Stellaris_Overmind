@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from engine.config import TrainingConfig
-from engine.llm_provider import StubProvider
+from engine.llm_provider import LLMResponse, StubProvider
 from engine.ruleset_generator import ALLOWED_ACTIONS
 from training.evaluate import (
     SCENARIOS,
@@ -27,7 +27,7 @@ class TestEvalScenarios:
             assert s.name, "Scenario missing name"
             assert s.empire, f"{s.name} missing empire"
             assert s.state, f"{s.name} missing state"
-            assert s.state.get("version") == "4.3.4", f"{s.name} wrong version"
+            assert s.state.get("version") == "4.4.6", f"{s.name} wrong version"
 
     def test_expected_actions_are_valid(self) -> None:
         for s in SCENARIOS:
@@ -145,6 +145,35 @@ class TestRunEval:
 
 class TestDistillValidation:
 
+    def test_collect_from_eval_skips_invalid_directives(self, tmp_path) -> None:
+        from scripts.collect_teacher import collect_from_eval
+
+        class InvalidTeacherProvider:
+            name = "invalid-teacher"
+
+            def complete(self, prompt: str) -> LLMResponse:
+                return LLMResponse(
+                    text="ACTION: INVALID\nTARGET: NONE\nREASON: Invalid action.",
+                    model=self.name,
+                )
+
+        output_path = collect_from_eval(InvalidTeacherProvider(), tmp_path)
+
+        assert output_path.exists()
+        assert output_path.read_text(encoding="utf-8") == ""
+
+    def test_collect_from_eval_keeps_valid_directives(self, tmp_path) -> None:
+        from scripts.collect_teacher import collect_from_eval
+
+        output_path = collect_from_eval(StubProvider(), tmp_path)
+        records = [
+            json.loads(line)
+            for line in output_path.read_text(encoding="utf-8").splitlines()
+        ]
+
+        assert records
+        assert all(record["metadata"]["action"] == "CONSOLIDATE" for record in records)
+
     def test_validate_teacher_data(self, tmp_path) -> None:
         from training.distill import validate_teacher_data
 
@@ -204,7 +233,7 @@ class TestQuantizeCalibration:
         for p in prompts:
             assert isinstance(p, str)
             assert len(p) > 100  # non-trivial prompt
-            assert "4.3.4" in p
+            assert "4.4.6" in p
 
 
 # ======================================================================== #

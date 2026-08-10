@@ -13,20 +13,21 @@ Two modes of operation:
   The Python engine polls for changes.
 
 **Directive output (both modes):**
-  The engine writes ``directive.json`` to the mod's ``ai_bridge/`` directory.
-  A simple Clausewitz mod reads this and executes the action.
+The engine writes ``directive.json`` to the bridge directory. For AI mode it also
+writes one allowlisted country-event command when ``command_dir`` is configured.
+The optional Windows injector consumes that command and targets the mod event.
 
 Flow (Mode A):
   1. Stellaris autosaves → ``save games/<empire>/*.sav``
   2. SaveBridge detects new save, parses it
-  3. Engine processes → writes ``directive.json`` to mod bridge dir
-  4. Clausewitz mod reads directive on next tick, executes action
+    3. Engine processes → writes the directive audit record and event command
+    4. The optional injector targets the directive event at the AI country
 
 Flow (Mode B — legacy):
   1. Clausewitz mod writes ``state_snapshot.json``
   2. BridgeReader detects change
-  3. Engine processes → writes ``directive.json``
-  4. Mod reads directive on next tick
+    3. Engine processes → writes the directive audit record and event command
+    4. The optional injector targets the directive event at the AI country
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -42,6 +44,39 @@ log = logging.getLogger(__name__)
 # Fields that should never appear in known_empires at low/no intel
 _FOW_SUSPECT_FIELDS = {"economy", "economy_class", "tech_count", "known_fleet_power",
                        "military_power", "fleet_power", "resources"}
+
+AI_EVENT_IDS = {
+    "EXPAND": 101,
+    "BUILD_FLEET": 102,
+    "IMPROVE_ECONOMY": 103,
+    "FOCUS_TECH": 104,
+    "DIPLOMACY": 105,
+    "PREPARE_WAR": 106,
+    "DEFEND": 107,
+    "CONSOLIDATE": 108,
+    "COLONIZE": 109,
+    "BUILD_STARBASE": 110,
+    "ESPIONAGE": 111,
+}
+_AI_ACTION_BY_EVENT_ID = {event_id: action for action, event_id in AI_EVENT_IDS.items()}
+_AI_EVENT_COMMAND_PATTERN = re.compile(r"event overmind\.(\d+) ([1-9]\d*)\Z")
+
+
+def build_ai_event_command(country_id: int, action: str) -> str:
+    """Build the only console command accepted for an AI directive."""
+    if isinstance(country_id, bool) or country_id <= 0:
+        raise ValueError("AI directive country ID must be a positive integer")
+    try:
+        event_id = AI_EVENT_IDS[action]
+    except KeyError as exc:
+        raise ValueError(f"Unsupported AI directive action: {action}") from exc
+    return f"event overmind.{event_id} {country_id}"
+
+
+def is_ai_event_command(command: str) -> bool:
+    """Return whether *command* is an allowlisted, targeted Overmind event."""
+    match = _AI_EVENT_COMMAND_PATTERN.fullmatch(command)
+    return match is not None and int(match.group(1)) in _AI_ACTION_BY_EVENT_ID
 
 
 def _sanitize_snapshot_fow(data: dict) -> dict:
@@ -88,6 +123,7 @@ class BridgeConfig:
     bridge_dir: Path = Path("mod/ai_bridge")
     directive_file: str = "directive.json"
     ack_file: str = "ack.json"
+    command_dir: Path | None = None
 
     # Legacy JSON bridge (Mode B)
     snapshot_file: str = "state_snapshot.json"
@@ -240,152 +276,6 @@ class BridgeWriter:
         if self._directive_path.exists():
             self._directive_path.unlink()
 
-    def write_console_commands(self, directive: dict, stellaris_dir: Path | None = None) -> None:
-        """Write ``ai_commands.txt`` with console effects for this directive.
-
-        Generates both the mod flag commands AND direct Clausewitz effects
-        that execute real actions (build ships, research tech, build buildings,
-        adopt traditions, etc.) so the player sees immediate results.
-        """
-        action_codes = {
-            "EXPAND": 1, "BUILD_FLEET": 2, "IMPROVE_ECONOMY": 3,
-            "FOCUS_TECH": 4, "DIPLOMACY": 5, "PREPARE_WAR": 6,
-            "DEFEND": 7, "CONSOLIDATE": 8, "COLONIZE": 9,
-            "BUILD_STARBASE": 10, "ESPIONAGE": 11,
-        }
-        action = directive.get("action", "CONSOLIDATE")
-        code = action_codes.get(action, 8)
-
-        commands = [
-            f"# Overmind directive: {action}",
-            f"# Reason: {directive.get('reason', 'N/A')[:80]}",
-            "",
-            "# --- Mod flags (personality + modifier) ---",
-            f"effect set_variable = {{ which = overmind_action value = {code} }}",
-            "effect set_country_flag = overmind_directive_ready",
-        ]
-
-        # --- Direct effects per action ---
-        commands.append("")
-        commands.append(f"# --- Direct effects: {action} ---")
-
-        if action == "BUILD_FLEET":
-            commands.extend([
-                "# Build corvettes at all shipyards",
-                "effect every_owned_planet = {",
-                "    limit = { has_starport_size >= starbase_level_starport }",
-                "    planet_event = { id = overmind.100 }",
-                "}",
-                "# Queue ship construction via resource boost",
-                "effect add_resource = { alloys = 200 }",
-                "effect country_event = { id = overmind.100 }",
-            ])
-
-        elif action == "IMPROVE_ECONOMY":
-            commands.extend([
-                "# Build mining/generator districts on planets with free slots",
-                "effect every_owned_planet = {",
-                (
-                    "    limit = { free_district_slots > 0 "
-                    "num_districts = { type = district_mining value < 10 } }"
-                ),
-                "    add_district = district_mining",
-                "}",
-                "effect every_owned_planet = {",
-                (
-                    "    limit = { free_district_slots > 0 "
-                    "num_districts = { type = district_generator value < 10 } }"
-                ),
-                "    add_district = district_generator",
-                "}",
-                "# Build alloy foundry on capital if possible",
-                "effect capital_scope = {",
-                "    if = {",
-                "        limit = { free_building_slots > 0 }",
-                "        add_building = building_foundry_1",
-                "    }",
-                "}",
-            ])
-
-        elif action == "FOCUS_TECH":
-            commands.extend([
-                "# Build research districts/labs",
-                "effect every_owned_planet = {",
-                "    limit = { free_district_slots > 0 }",
-                "    add_district = district_generator",
-                "}",
-                "effect capital_scope = {",
-                "    if = {",
-                "        limit = { free_building_slots > 0 }",
-                "        add_building = building_research_lab_1",
-                "    }",
-                "}",
-                "# Boost research output",
-                "effect add_modifier = { modifier = overmind_research_focus days = 180 }",
-            ])
-
-        elif action == "EXPAND":
-            commands.extend([
-                "# Boost influence for expansion",
-                "effect add_resource = { influence = 50 }",
-                "effect add_modifier = { modifier = overmind_expansion_focus days = 180 }",
-            ])
-
-        elif action == "COLONIZE":
-            commands.extend([
-                "# Boost colony development",
-                "effect add_resource = { food = 200 }",
-                "effect add_modifier = { modifier = overmind_colonize_focus days = 180 }",
-            ])
-
-        elif action == "PREPARE_WAR":
-            commands.extend([
-                "# War economy: boost alloys",
-                "effect add_resource = { alloys = 300 }",
-                "effect add_modifier = { modifier = overmind_war_preparation days = 360 }",
-            ])
-
-        elif action == "DEFEND":
-            commands.extend([
-                "# Reinforce starbases",
-                "effect add_modifier = { modifier = overmind_defense_focus days = 180 }",
-            ])
-
-        elif action == "CONSOLIDATE":
-            commands.extend([
-                "# Stabilize economy",
-                "effect add_resource = { energy = 100 minerals = 100 }",
-                "effect add_modifier = { modifier = overmind_consolidation days = 180 }",
-            ])
-
-        elif action == "BUILD_STARBASE":
-            commands.extend([
-                "# Starbase upgrade resources",
-                "effect add_resource = { alloys = 150 influence = 25 }",
-                "effect add_modifier = { modifier = overmind_starbase_focus days = 180 }",
-            ])
-
-        elif action == "DIPLOMACY":
-            commands.extend([
-                "# Diplomatic weight boost",
-                "effect add_modifier = { modifier = overmind_diplomacy_focus days = 180 }",
-            ])
-
-        elif action == "ESPIONAGE":
-            commands.extend([
-                "# Espionage boost",
-                "effect add_modifier = { modifier = overmind_espionage_focus days = 180 }",
-            ])
-
-        # Write to Stellaris user data dir (where `run` looks for files)
-        if stellaris_dir and stellaris_dir.exists():
-            cmd_path = stellaris_dir / "ai_commands.txt"
-        else:
-            cmd_path = self._config.bridge_dir / "ai_commands.txt"
-
-        cmd_path.write_text("\n".join(commands), encoding="utf-8")
-        log.info("Wrote console commands: %s → %s (code %d)", action, cmd_path, code)
-
     def write_suggestion(self, directive: dict, stellaris_dir: Path | None = None) -> None:
         """Write a human-readable suggestion file for player mode.
 
@@ -493,10 +383,13 @@ class BridgeWriter:
     def write_directive_for(self, country_id: int, directive: dict) -> None:
         """Write a directive for a specific AI empire.
 
-        Creates ``directive_<country_id>.json`` in the bridge directory.
-        The mod reads each per-empire directive and scopes execution to
-        the matching country.
+        Creates a JSON audit record and, when configured, an allowlisted console
+        event command. The injector consumes the command only after atomic rename.
         """
+        action = directive.get("action")
+        if not isinstance(action, str):
+            raise ValueError("AI directive action must be a string")
+        command = build_ai_event_command(country_id, action)
         self._config.bridge_dir.mkdir(parents=True, exist_ok=True)
         path = self._config.bridge_dir / f"directive_{country_id}.json"
         tmp_path = path.with_suffix(".tmp")
@@ -505,7 +398,15 @@ class BridgeWriter:
             encoding="utf-8",
         )
         tmp_path.replace(path)
+        command_dir = self._config.command_dir
+        if command_dir is None:
+            return
+        command_dir.mkdir(parents=True, exist_ok=True)
+        command_path = command_dir / f"overmind_directive_{country_id}.command"
+        command_tmp_path = command_path.with_suffix(".tmp")
+        command_tmp_path.write_text(command + "\n", encoding="utf-8")
+        command_tmp_path.replace(command_path)
         log.debug(
-            "Wrote directive for country %d: action=%s",
-            country_id, directive.get("action"),
+            "Wrote directive for country %d: %s",
+            country_id, command,
         )

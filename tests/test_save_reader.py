@@ -1,4 +1,4 @@
-"""Tests for save_reader — Stellaris 4.3.4."""
+"""Tests for save_reader — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from engine.save_reader import (
     _extract_colonies,
     _extract_economy,
     _extract_edicts,
+    _extract_empire_info,
     _extract_leaders,
     _extract_policies,
     _extract_starbases,

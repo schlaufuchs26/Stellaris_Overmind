@@ -1,4 +1,4 @@
-"""Tests for recorder — Stellaris 4.3.4."""
+"""Tests for recorder — Stellaris 4.4.6."""
 
 from __future__ import annotations
 

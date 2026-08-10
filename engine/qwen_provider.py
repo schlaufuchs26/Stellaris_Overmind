@@ -81,7 +81,7 @@ class QwenVLLMProvider(LLMProvider):
                 {
                     "role": "system",
                     "content": (
-                        "You are a Stellaris 4.3.4 strategic AI advisor. "
+                        "You are a Stellaris 4.4.6 strategic AI advisor. "
                         "Respond ONLY in the exact format requested. "
                         "Never invent game mechanics."
                     ),
@@ -187,7 +187,7 @@ class OpenAICompatProvider(LLMProvider):
                 {
                     "role": "system",
                     "content": (
-                        "You are a Stellaris 4.3.4 strategic AI advisor. "
+                        "You are a Stellaris 4.4.6 strategic AI advisor. "
                         "Respond ONLY in the exact format requested."
                     ),
                 },

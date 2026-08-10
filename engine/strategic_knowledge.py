@@ -1,5 +1,5 @@
 """
-Strategic Knowledge — Stellaris 4.3.4 game systems reference.
+Strategic Knowledge — Stellaris 4.4.6 game systems reference.
 
 This module provides structured strategic knowledge about game systems
 that the LLM needs to make informed decisions.  Unlike ruleset_generator.py

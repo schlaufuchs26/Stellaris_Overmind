@@ -1,5 +1,5 @@
 """
-Strategic Planner — Stellaris 4.3.4 LLM AI Overhaul
+Strategic Planner — Stellaris 4.4.6 LLM AI Overhaul
 
 Runs periodically (every N in-game years or on phase transitions) to
 produce a high-level strategic assessment.  The output is a structured
@@ -259,7 +259,7 @@ def assess_code(
 # ======================================================================== #
 
 _PLANNER_PROMPT_TEMPLATE = """\
-You are a long-term strategic planner for a Stellaris 4.3.4 empire.
+You are a long-term strategic planner for a Stellaris 4.4.6 empire.
 Analyze the empire's position and produce a strategic assessment.
 
 EMPIRE CONTEXT:

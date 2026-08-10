@@ -1,5 +1,5 @@
 """
-Validator — Stellaris 4.3.4 LLM AI Overhaul
+Validator — Stellaris 4.4.6 LLM AI Overhaul
 
 Validates LLM directives against the ruleset, fog‑of‑war constraints,
 game version, meta rules, and origin/civic constraints before they are
@@ -10,20 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from engine.meta_loader import load_meta
 from engine.ruleset_generator import ALLOWED_ACTIONS, GAME_VERSION
-
-# Weapons the LLM must never recommend (dead in 4.3)
-FORBIDDEN_WEAPONS: list[str] = [
-    "disruptor",
-    "disruptors",
-    "arc_emitter",
-]
-
-# Fleet compositions the LLM must never recommend
-FORBIDDEN_FLEET_PATTERNS: list[str] = [
-    "corvette_only",
-    "all_corvettes",
-]
 
 
 @dataclass
@@ -134,7 +122,9 @@ def validate_directive(
         errors.append("Directive reason is empty — LLM must cite ruleset elements")
 
     # --- 7. Meta-forbidden patterns ---
-    _validate_meta_forbidden(action, params, reason, errors, warnings)
+    _validate_meta_forbidden(
+        action, params, reason, ruleset_version, errors, warnings,
+    )
 
     # --- 8. Phase-appropriate checks ---
     _validate_phase_logic(action, state, ruleset, warnings)
@@ -175,6 +165,21 @@ def _validate_origin_constraints(
             errors.append(
                 "Life-Seeded origin restricts early colonization to Gaia worlds"
             )
+
+    if (
+        overrides.get("colonization_rules") == "nomadic_settlement_only"
+        and action == "EXPAND"
+    ):
+        errors.append("Nomadic empires use Waystations instead of territorial expansion")
+
+    if (
+        overrides.get("colonization_rules") == "nomadic_settlement_only"
+        and action == "COLONIZE"
+        and not params.get("settlement_available")
+    ):
+        errors.append(
+            "Nomadic empires may settle only after the state confirms settlement availability"
+        )
 
     # Endbringers can only pursue psionic ascension
     if overrides.get("ascension_lock") == "psionic":
@@ -229,35 +234,33 @@ def _validate_meta_forbidden(
     action: str,
     params: dict,
     reason: str,
+    version: str,
     errors: list[str],
     warnings: list[str],
 ) -> None:
-    """Reject meta-forbidden patterns from META_4.3.4.md §10."""
+    """Reject only patterns forbidden by the matching curated meta pack."""
     reason_lower = reason.lower()
+    meta = load_meta(version)
+    forbidden_weapons = set(meta.get("forbidden_weapons", []))
+    forbidden_patterns = set(meta.get("forbidden_fleet_patterns", []))
 
-    # Disruptors are dead in 4.3
     if action == "BUILD_FLEET":
         weapon = params.get("weapon_type", "").lower()
-        if weapon in FORBIDDEN_WEAPONS:
+        if weapon in forbidden_weapons:
             errors.append(
-                f"Weapon '{weapon}' is dead in 4.3 — ~300 days to kill a corvette. "
-                "Use autocannon+plasma, kinetic artillery, or tachyon lance instead."
+                f"Weapon '{weapon}' is forbidden by the curated {version} meta."
             )
-        # Also check if disruptors mentioned in reason
-        for fw in FORBIDDEN_WEAPONS:
+        for fw in forbidden_weapons:
             if fw in reason_lower:
                 warnings.append(
-                    f"Reason mentions '{fw}' which is dead in 4.3. "
-                    "Reconsider weapon choice."
+                    f"Reason mentions '{fw}', which is forbidden by the curated {version} meta."
                 )
 
-    # Corvette-only fleets are punished by titan AoE
     if action == "BUILD_FLEET":
         composition = params.get("composition", "")
-        if isinstance(composition, str) and composition.lower() in FORBIDDEN_FLEET_PATTERNS:
+        if isinstance(composition, str) and composition.lower() in forbidden_patterns:
             warnings.append(
-                "Corvette-only fleets are punished by titan AoE in 4.3. "
-                "Consider mixed composition with fleet splitting."
+                f"Fleet pattern '{composition}' is forbidden by the curated {version} meta."
             )
 
     # Pre-4.3 assumptions in reason
@@ -271,7 +274,7 @@ def _validate_meta_forbidden(
         if flag in reason_lower:
             warnings.append(
                 f"Reason references '{flag}' which may be a pre-4.3 mechanic. "
-                "Verify against 4.3.4 rules."
+                "Verify against 4.4.6 rules."
             )
 
 

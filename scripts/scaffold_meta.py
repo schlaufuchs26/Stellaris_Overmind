@@ -3,7 +3,7 @@ Scaffold a new meta file for a Stellaris patch version.
 
 Usage:
     python scripts/scaffold_meta.py 4.4.0
-    python scripts/scaffold_meta.py 4.4.0 --from 4.3.4
+    python scripts/scaffold_meta.py 4.4.0 --from 4.4.6
     python scripts/scaffold_meta.py --detect   # detect from latest save file
 
 Creates ``docs/meta/X.Y.Z.json`` with the structure pre-filled from

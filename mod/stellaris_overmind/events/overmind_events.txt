@@ -1,21 +1,15 @@
 # ============================================================
 # Stellaris Overmind — Events
 #
-# These events read directives from the Python AI engine and
-# execute the corresponding macro actions.
+# These events receive targeted directives from the Python AI engine and
+# execute the corresponding macro actions through native AI modifiers.
 #
-# The Python engine writes directive.json to ai_bridge/.
-# We can't read JSON from Clausewitz directly, so we use a
-# flag-based polling system:
+# The Python engine writes a JSON audit record plus an allowlisted country-event
+# command. Clausewitz cannot read the JSON directly; the optional external
+# injector calls the matching country event with its country ID.
 #
-# 1. Python engine sets a per-country flag via console:
-#      effect <country_scope> = { set_country_flag = overmind_directive_ready }
-#      effect <country_scope> = { set_variable = { which = overmind_action value = N } }
-# 2. This event fires on monthly pulse per country
-# 3. Checks THIS country's flag (not global — supports multi-empire AI mode)
-# 4. Reads the action from country-scoped variable
-# 5. Calls the appropriate scripted effect (scoped to THIS country)
-# 6. Clears the flag
+# The `overmind.101` through `overmind.111` events are the current transport.
+# The monthly flag reader remains for compatible legacy integrations.
 #
 # This design supports both player mode (1 empire) and AI mode
 # (multiple empires each getting their own directive).
@@ -69,7 +63,103 @@ country_event = {
 
 
 # ============================================================
-# Event 100: Monthly directive reader (heartbeat)
+# Events 101-111: Direct AI directive transport
+#
+# The external injector calls `event overmind.<id> <country_id>`.
+# Each event is scoped by the target country ID, rejects non-AI countries,
+# and only applies an existing native-AI modifier/personality effect.
+# ============================================================
+country_event = {
+	id = overmind.101
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_expand = yes }
+}
+
+country_event = {
+	id = overmind.102
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_build_fleet = yes }
+}
+
+country_event = {
+	id = overmind.103
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_improve_economy = yes }
+}
+
+country_event = {
+	id = overmind.104
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_focus_tech = yes }
+}
+
+country_event = {
+	id = overmind.105
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_diplomacy = yes }
+}
+
+country_event = {
+	id = overmind.106
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_prepare_war = yes }
+}
+
+country_event = {
+	id = overmind.107
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_defend = yes }
+}
+
+country_event = {
+	id = overmind.108
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_consolidate = yes }
+}
+
+country_event = {
+	id = overmind.109
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_colonize = yes }
+}
+
+country_event = {
+	id = overmind.110
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_build_starbase = yes }
+}
+
+country_event = {
+	id = overmind.111
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = { is_ai = yes is_country_type = default }
+	immediate = { set_country_flag = overmind_active overmind_action_espionage = yes }
+}
+
+
+# ============================================================
+# Event 100: Legacy monthly directive reader (heartbeat)
 # Uses per-country flags and variables — each empire gets its
 # own directive independently.  No global state shared.
 # ============================================================

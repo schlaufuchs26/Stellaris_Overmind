@@ -1,5 +1,5 @@
 """
-Ruleset Generator — Stellaris 4.3.4 LLM AI Overhaul
+Ruleset Generator — Stellaris 4.4.6 LLM AI Overhaul
 
 Builds a composite ruleset from an empire's ethics, civics, traits, origin,
 and government type.  The output is a structured dict consumed by the
@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-GAME_VERSION = "4.3.4"
+GAME_VERSION = "4.4.6"
 
 ALLOWED_ACTIONS: list[str] = [
     "EXPAND",
@@ -193,7 +193,7 @@ ETHICS_BASE: dict[str, dict] = {
 
 
 # ======================================================================== #
-# Civics → Modifiers (all meta‑relevant civics from META_4.3.4.md)
+# Civics → Modifiers (all meta‑relevant civics from META_4.4.6.md)
 # ======================================================================== #
 
 CIVIC_MODIFIERS: dict[str, dict] = {
@@ -461,7 +461,7 @@ CIVIC_MODIFIERS: dict[str, dict] = {
 
 
 # ======================================================================== #
-# Traits → Micro‑Modifiers (meta‑relevant from META_4.3.4.md)
+# Traits → Micro‑Modifiers (meta‑relevant from META_4.4.6.md)
 # ======================================================================== #
 
 TRAIT_MICRO: dict[str, dict] = {
@@ -470,8 +470,16 @@ TRAIT_MICRO: dict[str, dict] = {
     "Thrifty": {"trader_job_efficiency": 0.25},
     "Rapid Breeders": {"logistic_growth_mult": 0.10},
     "Traditional": {"bureaucrat_job_efficiency": 0.10},
-    "Strong": {"army_damage": 0.05, "miner_job_efficiency": 0.025, "soldier_job_efficiency": 0.05},
-    "Very Strong": {"army_damage": 0.10, "miner_job_efficiency": 0.05, "soldier_job_efficiency": 0.10},
+    "Strong": {
+        "army_damage": 0.05,
+        "miner_job_efficiency": 0.025,
+        "soldier_job_efficiency": 0.05,
+    },
+    "Very Strong": {
+        "army_damage": 0.10,
+        "miner_job_efficiency": 0.05,
+        "soldier_job_efficiency": 0.10,
+    },
     "Ingenious": {"technician_job_efficiency": 0.15},
     "Industrious": {"miner_job_efficiency": 0.15},
     "Natural Engineers": {"engineering_research": 0.05},
@@ -526,7 +534,7 @@ TRAIT_MICRO: dict[str, dict] = {
 
 
 # ======================================================================== #
-# Origins → Overrides (all meta origins from META_4.3.4.md)
+# Origins → Overrides (all meta origins from META_4.4.6.md)
 # ======================================================================== #
 
 ORIGIN_OVERRIDES: dict[str, dict] = {
@@ -556,6 +564,34 @@ ORIGIN_OVERRIDES: dict[str, dict] = {
         "habitat_specializations": ["rare_crystal", "exotic_gas", "volatile_mote"],
         "meta_tier": "S",
         "meta_strategy": "virtual_ascension_rush",
+    },
+    "Voidfarers": {
+        "nomadic_empire": True,
+        "colonization_rules": "nomadic_settlement_only",
+        "territorial_expansion": "waystations",
+        "meta_tier": "unranked",
+        "meta_strategy": "nomadic_wayline_network",
+    },
+    "Heirs Of The Khan": {
+        "nomadic_empire": True,
+        "colonization_rules": "nomadic_settlement_only",
+        "territorial_expansion": "waystations",
+        "meta_tier": "unranked",
+        "meta_strategy": "nomadic_contract_survival",
+    },
+    "The Sacred Path": {
+        "nomadic_empire": True,
+        "colonization_rules": "nomadic_settlement_only",
+        "territorial_expansion": "waystations",
+        "meta_tier": "unranked",
+        "meta_strategy": "nomadic_sacred_sites",
+    },
+    "Forever Cruise": {
+        "nomadic_empire": True,
+        "colonization_rules": "nomadic_settlement_only",
+        "territorial_expansion": "waystations",
+        "meta_tier": "unranked",
+        "meta_strategy": "nomadic_passenger_balance",
     },
     # --- Tier A ---
     "Synthetic Fertility": {
@@ -771,7 +807,7 @@ ORIGIN_OVERRIDES: dict[str, dict] = {
 
 
 # ======================================================================== #
-# Fleet Composition Meta (from META_4.3.4.md §4)
+# Fleet Composition Meta (from META_4.4.6.md §4)
 # ======================================================================== #
 
 @dataclass
@@ -921,7 +957,10 @@ PHASE_PRIORITIES: dict[GamePhase, dict] = {
         "fleet_target": "crisis_ready",
         "research_priority": "repeatables",
         "unity_priority": "maximum",
-        "notes": "Repeatables (+20 naval cap). Dyson Sphere + Matter Decompressor. Crisis prep by 2350.",
+        "notes": (
+            "Repeatables (+20 naval cap). Dyson Sphere + Matter Decompressor. "
+            "Crisis prep by 2350."
+        ),
     },
 }
 

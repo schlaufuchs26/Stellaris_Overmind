@@ -27,14 +27,20 @@ from engine.clausewitz_parser import parse_save
 
 log = logging.getLogger(__name__)
 
-GAME_VERSION = "4.3.4"
+GAME_VERSION = "4.4.6"
+_NOMAD_ORIGIN_IDS = {
+    "origin_voidfarers",
+    "origin_heirs_of_the_khan",
+    "origin_the_sacred_path",
+    "origin_forever_cruise",
+}
 
 
 def detect_game_version(meta: dict) -> str:
     """Extract the game version from save file metadata.
 
-    Stellaris saves store version as e.g. ``"Cetus v4.3.4"``.
-    Returns just the numeric part (``"4.3.4"``).
+    Stellaris saves store version as e.g. ``"Cetus v4.4.6"``.
+    Returns just the numeric part (``"4.4.6"``).
     """
     raw = str(meta.get("version", ""))
     # Format: "PatchName vX.Y.Z" or just "X.Y.Z"
@@ -483,6 +489,10 @@ def _extract_empire_info(country: dict, player_name: str) -> dict:
     origin = gov.get("origin", "")
 
     gov_type = str(gov.get("type", ""))
+    origin_id = str(origin).lower()
+    is_nomadic = bool(country.get("is_nomadic", False))
+    is_nomadic = is_nomadic or "nomadic" in gov_type.lower()
+    is_nomadic = is_nomadic or origin_id in _NOMAD_ORIGIN_IDS
 
     return {
         "name": player_name,
@@ -490,6 +500,7 @@ def _extract_empire_info(country: dict, player_name: str) -> dict:
         "civics": civics,
         "origin": str(origin),
         "government": gov_type,
+        "is_nomadic": is_nomadic,
     }
 
 
@@ -851,7 +862,7 @@ def _estimate_economy_class(country: dict) -> str:
     """Classify economy strength (requires high intel).
 
     Returns only a classification label, never exact resource numbers.
-    Reads from the correct 4.3.4 save path:
+    Reads from the correct 4.4.6 save path:
     country.modules.standard_economy_module.resources
     """
     modules = country.get("modules", {})

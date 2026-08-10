@@ -1,14 +1,9 @@
-"""
-Auto-Execute — Sends console commands to Stellaris automatically.
+"""Inject constrained Overmind country events into Stellaris.
 
-Watches for new ``ai_commands.txt`` files and sends keystrokes to
-the Stellaris window to execute them via the in-game console.
-
-Flow:
-  1. Watches the Stellaris user data directory for ai_commands.txt changes
-  2. When a new command file appears, activates the Stellaris window
-  3. Sends: ` (open console) → run ai_commands.txt → Enter → ` (close console)
-  4. Waits for the next directive
+The bridge writes one ``overmind_directive_<country_id>.command`` file per AI
+directive. Each file must contain exactly one allowlisted ``event overmind.*``
+command. This script rejects arbitrary console text and never switches player
+control or executes direct build/resource effects.
 
 Usage:
     python scripts/auto_execute.py
@@ -21,8 +16,8 @@ Requirements:
     - The game console must be accessible (` key)
     - Windows only (uses ctypes for window activation)
 
-Note: This is optional — you can always run `run ai_commands.txt` manually
-in the Stellaris console instead.
+Note: This is optional. AI-mode directives remain pending until this injector
+or another compatible transport is running.
 """
 
 from __future__ import annotations
@@ -31,9 +26,10 @@ import argparse
 import ctypes
 import ctypes.wintypes
 import logging
-import os
 import time
 from pathlib import Path
+
+from engine.bridge import is_ai_event_command
 
 log = logging.getLogger(__name__)
 
@@ -107,7 +103,7 @@ def send_text(text: str, delay: float = 0.03) -> None:
         time.sleep(delay)
 
 
-def execute_console_command(hwnd: int, command: str = "run ai_commands.txt") -> bool:
+def execute_console_command(hwnd: int, command: str) -> bool:
     """Open Stellaris console, type command, execute, close console."""
     if not activate_window(hwnd):
         log.warning("Could not activate Stellaris window")
@@ -137,41 +133,31 @@ def watch_and_execute(
     stellaris_dir: Path,
     poll_interval: float = 2.0,
 ) -> None:
-    """Watch for new ai_commands.txt and auto-execute in Stellaris."""
-    cmd_path = stellaris_dir / "ai_commands.txt"
-    last_mtime: float = 0.0
-
-    log.info("Auto-execute watching: %s", cmd_path)
+    """Inject each pending, allowlisted AI directive event exactly once."""
+    log.info("Auto-execute watching: %s", stellaris_dir / "overmind_directive_*.command")
     log.info("Make sure Stellaris is running and the console is accessible")
     log.info("Press Ctrl+C to stop")
 
     while True:
         try:
-            if cmd_path.exists():
-                mtime = os.path.getmtime(cmd_path)
-                if mtime > last_mtime:
-                    last_mtime = mtime
+            for command_path in sorted(stellaris_dir.glob("overmind_directive_*.command")):
+                command = command_path.read_text(encoding="utf-8").strip()
+                if not is_ai_event_command(command):
+                    rejected_path = command_path.with_suffix(".rejected")
+                    command_path.replace(rejected_path)
+                    log.error("Rejected unsafe directive command: %s", command_path.name)
+                    continue
 
-                    # Read command to log what we're executing
-                    content = cmd_path.read_text(encoding="utf-8").strip()
-                    action_line = next(
-                        (l for l in content.splitlines() if l.startswith("#")),
-                        "unknown",
-                    )
-                    log.info("New directive detected: %s", action_line)
+                hwnd = find_stellaris_window()
+                if hwnd == 0:
+                    log.warning("Stellaris window not found — is the game running?")
+                    break
 
-                    # Find and activate Stellaris
-                    hwnd = find_stellaris_window()
-                    if hwnd == 0:
-                        log.warning("Stellaris window not found — is the game running?")
-                        time.sleep(poll_interval)
-                        continue
-
-                    # Execute
-                    if execute_console_command(hwnd):
-                        log.info("Console command sent successfully")
-                    else:
-                        log.warning("Failed to send console command")
+                if execute_console_command(hwnd, command):
+                    command_path.unlink()
+                    log.info("Injected directive: %s", command)
+                else:
+                    log.warning("Failed to inject directive: %s", command)
 
             time.sleep(poll_interval)
 

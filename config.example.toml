@@ -91,8 +91,12 @@ save_dir = "C:/Users/YOUR_USER/Documents/Paradox Interactive/Stellaris/save game
 # Set this if auto-detection picks the wrong empire.
 # player_name = ""
 
-# Directive output directory — the Clausewitz mod reads directives from here.
+# Directive audit output directory.
 bridge_dir = "C:/Users/YOUR_USER/Documents/Paradox Interactive/Stellaris/mod/stellaris_overmind/ai_bridge"
+
+# Optional AI directive injector directory. Defaults to the parent of save_dir.
+# The injector accepts only generated `event overmind.<id> <country_id>` commands.
+# command_dir = "C:/Users/YOUR_USER/Documents/Paradox Interactive/Stellaris"
 
 # How often to check for new saves (seconds)
 poll_interval_s = 2.0

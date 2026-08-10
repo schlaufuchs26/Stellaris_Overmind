@@ -1,4 +1,4 @@
-﻿# Stellaris 4.3.4 – Personality System
+# Stellaris 4.4.6 – Personality System
 Defines how the LLM simulates human‑like strategic behavior using personality shards,
 multi-agent council, and Clausewitz AI personality overrides.
 
@@ -127,7 +127,7 @@ active personality:
 | `overmind_controlled_defensive` | 0.25 | 1.0 | DEFEND, CONSOLIDATE |
 | `overmind_controlled_assault` | 3.0 | 3.0 | Active war (rarely retreat) |
 
-All variants use 4.3.4 weapon meta: kinetic weapons, shields > armor,
+All variants use 4.4.6 weapon meta: kinetic weapons, shields > armor,
 autocannon+plasma for anti-corvette.
 
 ---

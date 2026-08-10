@@ -588,7 +588,8 @@ class AILoopController:
       5. Writes per-empire directives (``directive_<cid>.json``)
       6. Records decisions for training data collection
 
-    The mod then reads these and executes scoped to each AI country.
+    When configured, the bridge writes a targeted event command for the
+    injector to dispatch to the matching AI country.
     """
 
     def __init__(

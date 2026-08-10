@@ -1,4 +1,4 @@
-"""Tests for prompt_cache, hybrid_provider, and mcp_client — Stellaris 4.3.4."""
+"""Tests for prompt_cache, hybrid_provider, and mcp_client — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
@@ -19,47 +19,47 @@ class TestPromptCache:
 
     def test_cache_hit(self) -> None:
         cache = PromptCache()
-        built = cache.get_or_build("test", "early", "4.3.4", lambda: "prefix text")
+        built = cache.get_or_build("test", "early", "4.4.6", lambda: "prefix text")
         assert built == "prefix text"
         assert cache.stats["misses"] == 1
         assert cache.stats["hits"] == 0
 
         # Second call: should hit
-        built2 = cache.get_or_build("test", "early", "4.3.4", lambda: "WRONG")
+        built2 = cache.get_or_build("test", "early", "4.4.6", lambda: "WRONG")
         assert built2 == "prefix text"
         assert cache.stats["hits"] == 1
 
     def test_cache_invalidate_on_phase_change(self) -> None:
         cache = PromptCache()
-        cache.get_or_build("test", "early", "4.3.4", lambda: "early text")
-        result = cache.get_or_build("test", "mid", "4.3.4", lambda: "mid text")
+        cache.get_or_build("test", "early", "4.4.6", lambda: "early text")
+        result = cache.get_or_build("test", "mid", "4.4.6", lambda: "mid text")
         assert result == "mid text"
         assert cache.stats["misses"] == 2
 
     def test_cache_invalidate_on_version_change(self) -> None:
         cache = PromptCache()
-        cache.get_or_build("test", "early", "4.3.4", lambda: "v1")
+        cache.get_or_build("test", "early", "4.4.6", lambda: "v1")
         result = cache.get_or_build("test", "early", "4.3.5", lambda: "v2")
         assert result == "v2"
 
     def test_separate_keys(self) -> None:
         cache = PromptCache()
-        cache.get_or_build("domestic", "early", "4.3.4", lambda: "dom")
-        cache.get_or_build("military", "early", "4.3.4", lambda: "mil")
+        cache.get_or_build("domestic", "early", "4.4.6", lambda: "dom")
+        cache.get_or_build("military", "early", "4.4.6", lambda: "mil")
         assert cache.stats["misses"] == 2
 
         # Each key has its own cache
-        dom = cache.get_or_build("domestic", "early", "4.3.4", lambda: "X")
-        mil = cache.get_or_build("military", "early", "4.3.4", lambda: "X")
+        dom = cache.get_or_build("domestic", "early", "4.4.6", lambda: "X")
+        mil = cache.get_or_build("military", "early", "4.4.6", lambda: "X")
         assert dom == "dom"
         assert mil == "mil"
         assert cache.stats["hits"] == 2
 
     def test_invalidate_clears_all(self) -> None:
         cache = PromptCache()
-        cache.get_or_build("a", "early", "4.3.4", lambda: "aaa")
+        cache.get_or_build("a", "early", "4.4.6", lambda: "aaa")
         cache.invalidate()
-        result = cache.get_or_build("a", "early", "4.3.4", lambda: "bbb")
+        result = cache.get_or_build("a", "early", "4.4.6", lambda: "bbb")
         assert result == "bbb"
 
 

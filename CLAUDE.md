@@ -1,7 +1,7 @@
-﻿# CLAUDE.md — Stellaris Overmind
+# CLAUDE.md — Stellaris Overmind
 
 This file is the authority on all coding standards, architecture, and conventions for the
-Stellaris 4.3.4 LLM-Driven AI Overhaul project.
+Stellaris 4.4.6 LLM-Driven AI Overhaul project.
 
 Read `docs/PROJECT_OVERVIEW.md` for the full project specification.
 
@@ -11,7 +11,7 @@ Read `docs/PROJECT_OVERVIEW.md` for the full project specification.
 
 - **Name:** Stellaris Overmind
 - **Purpose:** Non-cheating, expert-level Stellaris AI powered by a local LLM
-- **Game Version Lock:** `4.3.4` — all rulesets, meta, and mechanics must match this version
+- **Game Version Lock:** `4.4.6` — all rulesets, meta, and mechanics must match this version
 - **Philosophy:** The LLM is a strategist, not a cheater
 
 ---
@@ -77,7 +77,7 @@ No free-form actions. The Validator rejects anything else.
 2. **Ethics Base** — strategic priorities (e.g., Militarist: high war frequency)
 3. **Civic Modifiers** — strong biases (e.g., Technocracy: research priority)
 4. **Trait Micro-Modifiers** — small nudges (e.g., Intelligent: +5% research)
-5. **Patch Meta** — curated 4.3.4 strategies (never LLM-generated)
+5. **Patch Meta** — curated 4.4.6 strategies (never LLM-generated)
 
 ### Decision Format
 Every LLM output must be:
@@ -138,13 +138,13 @@ REASON: <must cite ruleset elements>
 ## Game Mechanics Rules
 
 ### Version Lock
-All code, rulesets, and meta must reference Stellaris `4.3.4` mechanics only.
-If a mechanic does not exist in 4.3.4, it must not be referenced.
+All code, rulesets, and meta must reference Stellaris `4.4.6` mechanics only.
+If a mechanic does not exist in 4.4.6, it must not be referenced.
 
 ### Meta Contributions
-- Must be tested in a real 4.3.4 game
+- Must be tested in a real 4.4.6 game
 - Must not be invented or hallucinated by the LLM
-- Must be added to `docs/META_4.3.4.md`
+- Must be added to `docs/META_4.4.6.md`
 
 ### Personality System
 - Each empire gets a unique personality from ethics + civics + traits + origin + government

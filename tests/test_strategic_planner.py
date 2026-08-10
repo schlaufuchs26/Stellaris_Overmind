@@ -1,4 +1,4 @@
-"""Tests for strategic_planner — Stellaris 4.3.4."""
+"""Tests for strategic_planner — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
@@ -370,7 +370,7 @@ class TestPlannerPrompt:
         }
         prompt = _build_planner_prompt(state, ruleset, personality, None)
         assert "strategic planner" in prompt.lower()
-        assert "4.3.4" in prompt
+        assert "4.4.6" in prompt
         assert "2260" in prompt
         assert "Enemy" in prompt
         assert "ALLOWED" not in prompt or "PRIORITY" in prompt  # format block

@@ -1,4 +1,4 @@
-"""Tests for dual-mode (player/AI) support — Stellaris 4.3.4."""
+"""Tests for dual-mode (player/AI) support — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
@@ -159,7 +159,7 @@ class TestExtractStateForCountry:
         state = _extract_state_for_country(
             gamestate_with_ai, country, "1", "Tzynn Empire", 2220, 3,
         )
-        assert state["version"] == "4.3.4"
+        assert state["version"] == "4.4.6"
         assert state["year"] == 2220
         assert state["empire"]["name"] == "Tzynn Empire"
         assert "available_actions" in state
@@ -202,7 +202,7 @@ class TestAILoopController:
     def test_process_single_ai_state(self) -> None:
         """Process a single AI empire state."""
         state = {
-            "version": "4.3.4",
+            "version": "4.4.6",
             "year": 2220,
             "month": 3,
             "country_id": 1,
@@ -232,7 +232,7 @@ class TestAILoopController:
         states = []
         for cid in [1, 2, 3]:
             states.append({
-                "version": "4.3.4",
+                "version": "4.4.6",
                 "year": 2220,
                 "month": 3,
                 "country_id": cid,
@@ -259,7 +259,7 @@ class TestAILoopController:
     def test_generates_ruleset_from_save_data(self) -> None:
         """AI mode auto-detects empire config from save, not config.toml."""
         state = {
-            "version": "4.3.4",
+            "version": "4.4.6",
             "year": 2220,
             "month": 1,
             "country_id": 5,
@@ -282,11 +282,11 @@ class TestAILoopController:
         controller.process_states([state])
         assert 5 in controller._rulesets
         ruleset = controller._rulesets[5]
-        assert ruleset["version"] == "4.3.4"
+        assert ruleset["version"] == "4.4.6"
 
     def test_stats_tracking(self) -> None:
         state = {
-            "version": "4.3.4",
+            "version": "4.4.6",
             "year": 2220,
             "month": 1,
             "country_id": 1,
@@ -338,6 +338,22 @@ class TestBridgePerEmpire:
         assert (tmp_path / "bridge" / "directive_1.json").exists()
         assert (tmp_path / "bridge" / "directive_2.json").exists()
 
+    def test_ai_loop_writes_targeted_event_command(self, tmp_path) -> None:
+        state = _make_ai_state(7, year=2300)
+        command_dir = tmp_path / "commands"
+        controller = AILoopController(
+            provider=StubProvider(),
+            bridge_config=BridgeConfig(
+                bridge_dir=tmp_path / "bridge",
+                command_dir=command_dir,
+            ),
+        )
+
+        controller.process_states([state])
+
+        command_path = command_dir / "overmind_directive_7.command"
+        assert command_path.read_text(encoding="utf-8") == "event overmind.108 7\n"
+
 
 # ======================================================================== #
 # Helper: make an AI state dict
@@ -357,7 +373,7 @@ def _make_ai_state(
     colonies: list[str] | None = None,
 ) -> dict:
     return {
-        "version": "4.3.4",
+        "version": "4.4.6",
         "year": year,
         "month": 3,
         "country_id": country_id,

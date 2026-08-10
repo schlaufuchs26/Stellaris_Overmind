@@ -1,4 +1,4 @@
-"""Tests for decision_engine — Stellaris 4.3.4."""
+"""Tests for decision_engine — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
@@ -52,9 +52,11 @@ class TestBuildPrompt:
         rs = generate_ruleset(**une_empire)
         p = build_personality(**une_empire)
         prompt = build_prompt(rs, p, early_game_state, None)
-        assert "Disruptors are DEAD" in prompt
+        assert "VERSIONED META (4.4.6)" in prompt
+        assert "specialize colonies to their designation" in prompt
+        assert "Disruptors are DEAD" not in prompt
         assert "ALLOWED ACTIONS" in prompt
-        assert "4.3.4" in prompt
+        assert "4.4.6" in prompt
 
     def test_prompt_contains_fleet_meta(self, une_empire: dict, early_game_state: dict) -> None:
         rs = generate_ruleset(**une_empire)

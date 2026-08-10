@@ -113,7 +113,7 @@ def machine_empire() -> dict:
 def early_game_state() -> dict:
     """Minimal early-game state snapshot (year 2210)."""
     return {
-        "version": "4.3.4",
+        "version": "4.4.6",
         "year": 2210,
         "month": 3,
         "colonies": ["Earth", "Mars"],
@@ -144,7 +144,7 @@ def early_game_state() -> dict:
 def mid_game_state() -> dict:
     """Mid-game state snapshot (year 2280)."""
     return {
-        "version": "4.3.4",
+        "version": "4.4.6",
         "year": 2280,
         "month": 6,
         "colonies": ["Earth", "Mars", "Alpha Centauri III", "Deneb IV", "Sirius Prime"],
@@ -176,7 +176,7 @@ def mid_game_state() -> dict:
 def late_game_state() -> dict:
     """Late-game state snapshot (year 2380)."""
     return {
-        "version": "4.3.4",
+        "version": "4.4.6",
         "year": 2380,
         "month": 1,
         "colonies": [

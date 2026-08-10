@@ -1,4 +1,4 @@
-﻿# Stellaris 4.3.4 – State Exporter Specification
+# Stellaris 4.4.6 – State Exporter Specification
 The exporter extracts game state from autosave files and outputs **only legal information** to the LLM.
 
 ---

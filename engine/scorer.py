@@ -41,7 +41,7 @@ class OutcomeScores:
     tech_delta: float = 0.0         # research progress
     expansion_delta: float = 0.0    # colony / system growth
     stability_score: float = 0.0    # survived threats, no deficits
-    meta_alignment: float = 0.0     # adherence to META_4.3.4 rules
+    meta_alignment: float = 0.0     # adherence to META_4.4.6 rules
     composite: float = 0.0          # weighted final score
 
     def to_dict(self) -> dict:
@@ -195,7 +195,7 @@ def _score_meta_alignment(
     state: dict,
     ruleset: dict,
 ) -> float:
-    """Score how well the decision aligns with META_4.3.4 rules."""
+    """Score how well the decision aligns with META_4.4.6 rules."""
     score = 0.5  # baseline: neutral
     action = decision.get("action", "")
     year = state.get("year", 2200)

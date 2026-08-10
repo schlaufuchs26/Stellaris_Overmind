@@ -1,4 +1,4 @@
-"""Tests for game_loop — Stellaris 4.3.4."""
+"""Tests for game_loop — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def controller(empire: EmpireConfig, tmp_path) -> GameLoopController:
 class TestControllerInit:
 
     def test_ruleset_generated(self, controller: GameLoopController) -> None:
-        assert controller._ruleset["version"] == "4.3.4"
+        assert controller._ruleset["version"] == "4.4.6"
 
     def test_personality_generated(self, controller: GameLoopController) -> None:
         assert "tech_focus" in controller._personality

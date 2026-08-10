@@ -1,5 +1,5 @@
 """
-Personality Shards — Stellaris 4.3.4 LLM AI Overhaul
+Personality Shards — Stellaris 4.4.6 LLM AI Overhaul
 
 Generates per‑empire personality profiles from ethics, civics, traits, origin,
 and government type.  Each leader type contributes a "shard" whose weight is
@@ -79,7 +79,7 @@ DEFAULT_WEIGHTS: dict[str, float] = {
 
 
 # ======================================================================== #
-# Ascension Path Preferences (from META_4.3.4.md)
+# Ascension Path Preferences (from META_4.4.6.md)
 # ======================================================================== #
 
 ASCENSION_PREFERENCES: dict[str, str] = {

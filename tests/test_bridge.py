@@ -1,4 +1,4 @@
-"""Tests for bridge — Stellaris 4.3.4."""
+"""Tests for bridge — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
@@ -7,7 +7,15 @@ from pathlib import Path
 
 import pytest
 
-from engine.bridge import BridgeConfig, BridgeReader, BridgeWriter, UnifiedBridge
+from engine.bridge import (
+    AI_EVENT_IDS,
+    BridgeConfig,
+    BridgeReader,
+    BridgeWriter,
+    UnifiedBridge,
+    build_ai_event_command,
+    is_ai_event_command,
+)
 
 
 @pytest.fixture
@@ -23,6 +31,9 @@ def bridge_config(bridge_dir: Path) -> BridgeConfig:
 
 
 class TestBridgeWriter:
+
+    def test_does_not_expose_direct_console_execution(self) -> None:
+        assert not hasattr(BridgeWriter, "write_console_commands")
 
     def test_write_directive(self, bridge_config: BridgeConfig) -> None:
         writer = BridgeWriter(bridge_config)
@@ -48,6 +59,58 @@ class TestBridgeWriter:
     def test_clear_nonexistent_ok(self, bridge_config: BridgeConfig) -> None:
         writer = BridgeWriter(bridge_config)
         writer.clear_directive()  # should not raise
+
+    def test_writes_targeted_ai_event_command(self, bridge_config: BridgeConfig) -> None:
+        command_dir = bridge_config.bridge_dir / "commands"
+        bridge_config.command_dir = command_dir
+        writer = BridgeWriter(bridge_config)
+
+        writer.write_directive_for(42, {"action": "EXPAND"})
+
+        command_path = command_dir / "overmind_directive_42.command"
+        assert command_path.read_text(encoding="utf-8") == "event overmind.101 42\n"
+        assert not command_path.with_suffix(".tmp").exists()
+
+    def test_rejects_invalid_ai_event_command(self, bridge_config: BridgeConfig) -> None:
+        writer = BridgeWriter(bridge_config)
+
+        with pytest.raises(ValueError, match="Unsupported AI directive action"):
+            writer.write_directive_for(42, {"action": "INVALID"})
+
+        assert not (bridge_config.bridge_dir / "directive_42.json").exists()
+
+
+class TestAIEventCommands:
+
+    def test_mod_declares_each_allowlisted_action_event(self) -> None:
+        event_file = (
+            Path(__file__).parent.parent
+            / "mod/stellaris_overmind/events/overmind_events.txt"
+        )
+        content = event_file.read_text(encoding="utf-8")
+
+        for action, event_id in AI_EVENT_IDS.items():
+            assert f"id = overmind.{event_id}" in content
+            assert f"overmind_action_{action.lower()} = yes" in content
+
+    def test_builds_allowlisted_command(self) -> None:
+        assert build_ai_event_command(3, "ESPIONAGE") == "event overmind.111 3"
+
+    @pytest.mark.parametrize("command", [
+        "event overmind.101 3",
+        "event overmind.111 42",
+    ])
+    def test_recognizes_allowlisted_command(self, command: str) -> None:
+        assert is_ai_event_command(command)
+
+    @pytest.mark.parametrize("command", [
+        "effect add_resource = { alloys = 100 }",
+        "event overmind.101 0",
+        "event overmind.112 3",
+        "event overmind.101 3; play 3",
+    ])
+    def test_rejects_non_allowlisted_command(self, command: str) -> None:
+        assert not is_ai_event_command(command)
 
 
 class TestBridgeReader:
@@ -89,7 +152,10 @@ class TestBridgeReader:
 class TestUnifiedBridge:
 
     def test_json_mode_when_no_save_dir(self, bridge_config: BridgeConfig) -> None:
-        config = BridgeConfig(save_dir=Path("/nonexistent_path_xyz"), bridge_dir=bridge_config.bridge_dir)
+        config = BridgeConfig(
+            save_dir=Path("/nonexistent_path_xyz"),
+            bridge_dir=bridge_config.bridge_dir,
+        )
         bridge = UnifiedBridge(config)
         assert bridge.mode == "json"
 

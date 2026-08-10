@@ -1,5 +1,5 @@
 """
-Multi-Agent Council — Stellaris 4.3.4 LLM AI Overhaul
+Multi-Agent Council — Stellaris 4.4.6 LLM AI Overhaul
 
 Splits the monolithic decision prompt into domain-specific sub-agents
 (Domestic + Military) whose recommendations are merged by a government-
@@ -186,13 +186,13 @@ def _military_state(state: dict) -> dict:
 # ======================================================================== #
 
 _META_DOMESTIC = (
-    "4.3.4 META: Job EFFICIENCY > raw output. Specialize planets (forge/research/factory). "
+    "4.4.6 META: Job EFFICIENCY > raw output. Specialize planets (forge/research/factory). "
     "Minerals = foundation early. Trade builds top-tier. Unity rush + ascension = strongest macro. "
     "COLONIZE aggressively. FOCUS_TECH when behind. Stability bonuses halved."
 )
 
 _META_MILITARY = (
-    "4.3.4 META: Disruptors DEAD. Autocannon+Plasma = swarm meta. Titan AoE = meta-defining, split fleets. "
+    "4.4.6 META: Disruptors DEAD. Autocannon+Plasma = swarm meta. Titan AoE = meta-defining, split fleets. "
     "Naval cap 5x (corvette=5, BB=40). BUILD_STARBASE at chokepoints. "
     "DIPLOMACY for federations. ESPIONAGE for intel. PREPARE_WAR vs hostile neighbors."
 )
@@ -219,7 +219,7 @@ def _build_agent_prompt(
     # Domain-specific guidance
     if role == "domestic":
         system_msg = (
-            "You are the DOMESTIC advisor for a Stellaris 4.3.4 empire. "
+            "You are the DOMESTIC advisor for a Stellaris 4.4.6 empire. "
             "You advise on economy, technology, planets, and internal stability."
         )
         tradition_guide = get_tradition_guidance(
@@ -254,7 +254,7 @@ def _build_agent_prompt(
         )
     else:
         system_msg = (
-            "You are the MILITARY advisor for a Stellaris 4.3.4 empire. "
+            "You are the MILITARY advisor for a Stellaris 4.4.6 empire. "
             "You advise on fleets, wars, defense, diplomacy, and border security."
         )
         fleet_tmpl = get_fleet_template(year)
@@ -463,7 +463,7 @@ def _build_arbiter_prompt(
     phase = get_phase_priorities(year)
 
     return "\n".join([
-        f"You are the RULER of a {government} Stellaris 4.3.4 empire.",
+        f"You are the RULER of a {government} Stellaris 4.4.6 empire.",
         "Your advisors have submitted the following recommendations:",
         "",
         *rec_lines,

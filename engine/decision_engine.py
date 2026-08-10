@@ -1,5 +1,5 @@
 """
-Decision Engine — Stellaris 4.3.4 LLM AI Overhaul
+Decision Engine — Stellaris 4.4.6 LLM AI Overhaul
 
 Receives a ruleset + personality + known game state + triggering event,
 queries the LLM, and produces exactly one validated macro action.
@@ -18,6 +18,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 
+from engine.llm_provider import LLMProvider
+from engine.meta_loader import load_meta
 from engine.ruleset_generator import (
     ALLOWED_ACTIONS,
     get_espionage_phase_priority,
@@ -26,8 +28,6 @@ from engine.ruleset_generator import (
     get_weapon_meta,
 )
 from engine.strategic_knowledge import (
-    get_ascension_perk_guidance,
-    get_edict_guidance,
     get_megastructure_guidance,
     get_policy_guidance,
     get_starbase_guidance,
@@ -76,8 +76,9 @@ def build_prompt(
     """
     year = state.get("year", 2200)
     phase = get_phase_priorities(year)
-    fleet_tmpl = get_fleet_template(year)
-    weapons = get_weapon_meta()
+    meta = load_meta(str(ruleset.get("version", "")))
+    fleet_tmpl = get_fleet_template(year) if meta.get("fleet_templates") else None
+    weapons = get_weapon_meta() if meta.get("weapon_verdicts") else []
     espionage_phase = get_espionage_phase_priority(year)
 
     # Truncate state to fit prompt budget
@@ -95,25 +96,20 @@ def build_prompt(
         year, ethics=ethics, adopted=state.get("traditions", []),
     )
     policy_guide = get_policy_guidance(year, ethics)
-    perk_guide = get_ascension_perk_guidance(tier=0)
     tech_guide = get_tech_priorities(year)
     sb_guide = get_starbase_guidance(year)
     mega_names = [m["name"] for m in get_megastructure_guidance(year)]
 
     sections = [
-        "You are the strategic AI advisor for a Stellaris 4.3.4 empire.",
+        "You are the strategic AI advisor for a Stellaris 4.4.6 empire.",
         "You must choose exactly ONE action from the allowed list.",
         "You must cite ruleset elements in your reason.",
-        "You must NOT reference mechanics that do not exist in Stellaris 4.3.4.",
+        "You must NOT reference mechanics that do not exist in Stellaris 4.4.6.",
         "You must NOT use information the empire does not know (fog-of-war).",
         "",
-        "CRITICAL 4.3 META RULES:",
-        "- Disruptors are DEAD. Never recommend them.",
-        "- Titan AoE beams are meta-defining. Split fleets to avoid enemy titan AoE.",
-        "- Autocannon + Plasma is the swarm meta for corvettes/destroyers.",
-        "- Stability bonuses are halved in 4.3.",
-        "- Job EFFICIENCY matters more than raw output.",
-        "- Minerals are the foundation resource early game.",
+        f"VERSIONED META ({meta.get('version', ruleset.get('version', '?'))}):",
+        meta.get("meta_rules_domestic", "No curated domestic meta is available."),
+        meta.get("meta_rules_military", "No curated military meta is available."),
         "",
         f"ALLOWED ACTIONS: {', '.join(ALLOWED_ACTIONS)}",
         "",
@@ -125,15 +121,30 @@ def build_prompt(
         "",
         f"GAME PHASE: {phase['phase']} | FOCUS: {phase.get('economy_focus', '')}",
         "",
-        f"FLEET: {json.dumps(fleet_tmpl.composition)} | {fleet_tmpl.notes}",
-        "",
-        f"ESPIONAGE: priority={espionage_phase.get('priority', 'low')} | {espionage_phase.get('notes', '')}",
+        "ESPIONAGE: "
+        f"priority={espionage_phase.get('priority', 'low')} | "
+        f"{espionage_phase.get('notes', '')}",
         "",
         f"TRADITIONS: recommended={tradition_guide.get('recommended_trees', [])}",
         f"POLICY RECOMMENDATIONS: {json.dumps(policy_guide.get('recommended', {}))}",
         f"TECH PRIORITIES: {json.dumps(tech_guide.get('meta_notes', []))}",
         f"STARBASE: {sb_guide.get('priority', '')} | {sb_guide.get('notes', '')}",
     ]
+
+    if fleet_tmpl is not None:
+        sections.extend([
+            "",
+            f"FLEET: {json.dumps(fleet_tmpl.composition)} | {fleet_tmpl.notes}",
+        ])
+
+    if weapons:
+        sections.append(f"WEAPON META: {json.dumps(weapons)}")
+
+    if state.get("empire", {}).get("is_nomadic"):
+        nomad = meta.get("nomads", {})
+        sections.append(
+            f"NOMADS: {json.dumps(nomad.get('operational_rules', []))}"
+        )
 
     if mega_names:
         sections.append(f"MEGASTRUCTURES: consider building {mega_names}")
@@ -291,7 +302,7 @@ def decide(
     *,
     personality: dict | None = None,
     llm_callable=None,
-    provider: "LLMProvider | None" = None,
+    provider: LLMProvider | None = None,
 ) -> Directive:
     """Run one decision cycle.
 

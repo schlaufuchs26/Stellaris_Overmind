@@ -49,7 +49,7 @@ class SFTExample:
                 {
                     "role": "system",
                     "content": (
-                        "You are a Stellaris 4.3.4 strategic AI advisor. "
+                        "You are a Stellaris 4.4.6 strategic AI advisor. "
                         "Choose exactly ONE action and cite ruleset elements."
                     ),
                 },

@@ -106,7 +106,7 @@ def collect_from_replays(
                     {
                         "role": "system",
                         "content": (
-                            "You are a Stellaris 4.3.4 strategic AI advisor. "
+                            "You are a Stellaris 4.4.6 strategic AI advisor. "
                             "Choose exactly ONE action and cite ruleset elements."
                         ),
                     },
@@ -140,6 +140,7 @@ def collect_from_eval(
     from engine.llm_provider import LLMProviderError
     from engine.personality_shards import build_personality
     from engine.ruleset_generator import generate_ruleset
+    from engine.validator import validate_directive
     from training.evaluate import SCENARIOS
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -164,12 +165,17 @@ def collect_from_eval(
             except ValueError:
                 continue
 
+            vresult = validate_directive(directive.to_dict(), ruleset, scenario.state)
+            if not vresult.valid:
+                log.warning("Teacher response failed validation: %s", vresult.errors)
+                continue
+
             record = {
                 "messages": [
                     {
                         "role": "system",
                         "content": (
-                            "You are a Stellaris 4.3.4 strategic AI advisor. "
+                            "You are a Stellaris 4.4.6 strategic AI advisor. "
                             "Choose exactly ONE action and cite ruleset elements."
                         ),
                     },

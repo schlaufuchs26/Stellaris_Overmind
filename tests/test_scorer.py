@@ -1,4 +1,4 @@
-"""Tests for scorer — Stellaris 4.3.4."""
+"""Tests for scorer — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from engine.scorer import OutcomeScores, score_outcome
 
 @pytest.fixture
 def basic_ruleset() -> dict:
-    return {"version": "4.3.4", "base": {}, "modifiers": {}, "overrides": {}}
+    return {"version": "4.4.6", "base": {}, "modifiers": {}, "overrides": {}}
 
 
 class TestEconomyScoring:

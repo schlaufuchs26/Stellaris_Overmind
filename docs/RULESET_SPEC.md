@@ -1,4 +1,4 @@
-﻿# Stellaris 4.3.4 – Ruleset Specification
+# Stellaris 4.4.6 – Ruleset Specification
 This document defines the ruleset architecture used by the LLM‑driven AI.
 The ruleset ensures the AI behaves like an expert human player, without cheating, hallucinating mechanics, or using unseen information.
 
@@ -8,7 +8,7 @@ The ruleset ensures the AI behaves like an expert human player, without cheating
 The ruleset provides:
 - A **structured, deterministic foundation** for AI behavior.
 - A **safe constraint layer** preventing LLM hallucinations.
-- A **version‑locked meta layer** tied to Stellaris 4.3.4.
+- A **version‑locked meta layer** tied to Stellaris 4.4.6.
 - A **modular system** that adapts to ethics, civics, traits, origins, and government type.
 
 The LLM does not invent rules.
@@ -21,7 +21,7 @@ It **applies** the ruleset to make macro‑strategic decisions.
 ### 2.1 Top-Level Schema
 ```json
 {
-  "game_version": "4.3.4",
+  "game_version": "4.4.6",
   "empire_id": 0,
   "design": {},
   "base_priorities": {},
@@ -117,7 +117,7 @@ Each phase adjusts priorities.
 ---
 
 ## 9. Meta Rules (Version-Locked)
-Patch‑specific expert strategies for 4.3.4.
+Patch‑specific expert strategies for 4.4.6.
 
 The LLM must apply meta rules but cannot invent new ones.
 
@@ -125,7 +125,7 @@ The LLM must apply meta rules but cannot invent new ones.
 
 ## 10. Validation Requirements
 A ruleset is valid if:
-- It matches game version 4.3.4
+- It matches game version 4.4.6
 - It contains no undefined mechanics
 - It respects fog‑of‑war
 - It contains no contradictory modifiers

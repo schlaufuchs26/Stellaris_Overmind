@@ -1,11 +1,11 @@
-"""Tests for validator — Stellaris 4.3.4."""
+"""Tests for validator — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
 import pytest
 
 from engine.ruleset_generator import generate_ruleset
-from engine.validator import ALLOWED_ACTIONS, GAME_VERSION, validate_directive
+from engine.validator import validate_directive
 
 
 @pytest.fixture
@@ -32,6 +32,17 @@ def _inward_perfection_ruleset() -> dict:
 @pytest.fixture
 def _necrophage_ruleset(necrophage_empire: dict) -> dict:
     return generate_ruleset(**necrophage_empire)
+
+
+@pytest.fixture
+def _nomad_ruleset() -> dict:
+    return generate_ruleset(
+        ethics=["Xenophile"],
+        civics=[],
+        traits=[],
+        origin="Voidfarers",
+        government="Democracy",
+    )
 
 
 class TestActionWhitelist:
@@ -143,6 +154,41 @@ class TestOriginConstraints:
         )
         assert result.valid
 
+    def test_nomad_expansion_rejected(
+        self, _nomad_ruleset: dict, early_game_state: dict,
+    ) -> None:
+        result = validate_directive(
+            {"action": "EXPAND", "reason": "Claim a nearby system."},
+            _nomad_ruleset,
+            early_game_state,
+        )
+        assert not result.valid
+        assert any("waystations" in error.lower() for error in result.errors)
+
+    def test_nomad_settlement_requires_state_confirmation(
+        self, _nomad_ruleset: dict, early_game_state: dict,
+    ) -> None:
+        result = validate_directive(
+            {"action": "COLONIZE", "reason": "Settle an empty planet."},
+            _nomad_ruleset,
+            early_game_state,
+        )
+        assert not result.valid
+
+    def test_nomad_confirmed_settlement_accepted(
+        self, _nomad_ruleset: dict, early_game_state: dict,
+    ) -> None:
+        result = validate_directive(
+            {
+                "action": "COLONIZE",
+                "reason": "Settlement is available after Adaptability.",
+                "parameters": {"settlement_available": True},
+            },
+            _nomad_ruleset,
+            early_game_state,
+        )
+        assert result.valid
+
     def test_endbringers_non_psionic_rejected(
         self, _endbringer_ruleset: dict, early_game_state: dict,
     ) -> None:
@@ -186,9 +232,9 @@ class TestCivicConstraints:
 
 
 class TestMetaForbidden:
-    """Reject meta-forbidden patterns from META_4.3.4.md."""
+    """Apply forbidden patterns only when the active meta pack defines them."""
 
-    def test_disruptors_rejected(self, early_game_state: dict) -> None:
+    def test_unvalidated_weapon_is_not_rejected(self, early_game_state: dict) -> None:
         rs = generate_ruleset(
             ethics=["Militarist"], civics=[], traits=[],
             origin="Prosperous Unification", government="Democracy",
@@ -201,10 +247,9 @@ class TestMetaForbidden:
             },
             rs, early_game_state,
         )
-        assert not result.valid
-        assert any("dead in 4.3" in e.lower() for e in result.errors)
+        assert result.valid
 
-    def test_corvette_only_warned(self, early_game_state: dict) -> None:
+    def test_unvalidated_fleet_pattern_is_not_warned(self, early_game_state: dict) -> None:
         rs = generate_ruleset(
             ethics=[], civics=[], traits=[],
             origin="Prosperous Unification", government="Democracy",
@@ -217,8 +262,8 @@ class TestMetaForbidden:
             },
             rs, early_game_state,
         )
-        assert len(result.warnings) > 0
-        assert any("corvette" in w.lower() for w in result.warnings)
+        assert result.valid
+        assert not any("corvette" in warning.lower() for warning in result.warnings)
 
 
 class TestReasonRequired:
@@ -244,7 +289,7 @@ class TestResourceFeasibility:
             origin="Prosperous Unification", government="Democracy",
         )
         state = {
-            "version": "4.3.4", "year": 2230, "month": 1,
+            "version": "4.4.6", "year": 2230, "month": 1,
             "economy": {"alloys": 10, "monthly_net": {"alloys": -5}},
             "colonies": [], "known_empires": [], "fleets": [],
         }
@@ -260,7 +305,7 @@ class TestResourceFeasibility:
             origin="Prosperous Unification", government="Democracy",
         )
         state = {
-            "version": "4.3.4", "year": 2230, "month": 1,
+            "version": "4.4.6", "year": 2230, "month": 1,
             "economy": {"influence": 20},
             "colonies": [], "known_empires": [], "fleets": [],
         }
@@ -279,7 +324,7 @@ class TestCapacityChecks:
             origin="Prosperous Unification", government="Democracy",
         )
         state = {
-            "version": "4.3.4", "year": 2230, "month": 1,
+            "version": "4.4.6", "year": 2230, "month": 1,
             "economy": {}, "colonies": [], "known_empires": [], "fleets": [],
             "naval_capacity": {"starbase_capacity": 3},
             "starbases": [
@@ -304,7 +349,7 @@ class TestGenocidalConstraints:
             traits=[], origin="Prosperous Unification", government="Dictatorial",
         )
         state = {
-            "version": "4.3.4", "year": 2230, "month": 1,
+            "version": "4.4.6", "year": 2230, "month": 1,
             "economy": {}, "colonies": [], "known_empires": [], "fleets": [],
         }
         result = validate_directive(

@@ -1,4 +1,4 @@
-"""Tests for multi_agent — Stellaris 4.3.4."""
+"""Tests for multi_agent — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
@@ -259,7 +259,7 @@ class TestAgentPrompts:
         assert "DOMESTIC advisor" in prompt
         assert "IMPROVE_ECONOMY" in prompt
         assert "ALLOWED" in prompt
-        assert "4.3.4" in prompt
+        assert "4.4.6" in prompt
 
     def test_military_prompt_contains_fleet_focus(
         self, imperial_ruleset: dict, imperial_personality: dict,

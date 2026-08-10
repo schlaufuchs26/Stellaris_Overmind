@@ -213,6 +213,11 @@ def main() -> None:
         save_dir=save_dir,
         player_name=cfg.bridge.player_name,
         bridge_dir=Path(cfg.bridge.bridge_dir),
+        command_dir=(
+            Path(cfg.bridge.command_dir)
+            if cfg.bridge.command_dir
+            else (save_dir.parent if cfg.bridge.save_dir else None)
+        ),
         poll_interval_s=cfg.bridge.poll_interval_s,
     )
 

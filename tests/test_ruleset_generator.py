@@ -1,4 +1,4 @@
-"""Tests for ruleset_generator — Stellaris 4.3.4."""
+"""Tests for ruleset_generator — Stellaris 4.4.6."""
 
 from __future__ import annotations
 
@@ -7,9 +7,7 @@ import pytest
 from engine.ruleset_generator import (
     CIVIC_MODIFIERS,
     ETHICS_BASE,
-    GAME_VERSION,
     ORIGIN_OVERRIDES,
-    TRAIT_MICRO,
     GamePhase,
     generate_ruleset,
     get_crisis_counter,
@@ -22,9 +20,9 @@ from engine.ruleset_generator import (
 class TestGenerateRuleset:
     """Test composite ruleset generation."""
 
-    def test_version_is_434(self, une_empire: dict) -> None:
+    def test_version_is_446(self, une_empire: dict) -> None:
         rs = generate_ruleset(**une_empire)
-        assert rs["version"] == "4.3.4"
+        assert rs["version"] == "4.4.6"
 
     def test_ethics_applied(self, une_empire: dict) -> None:
         rs = generate_ruleset(**une_empire)
@@ -142,6 +140,17 @@ class TestOriginData:
 
     def test_void_dwellers_habitats_only(self) -> None:
         assert ORIGIN_OVERRIDES["Void Dwellers"]["colonization_rules"] == "habitats_only"
+
+    def test_voidfarers_use_waystations(self) -> None:
+        ruleset = generate_ruleset(
+            ethics=["Xenophile"],
+            civics=[],
+            traits=[],
+            origin="Voidfarers",
+            government="Democracy",
+        )
+        assert ruleset["overrides"]["nomadic_empire"] is True
+        assert ruleset["overrides"]["territorial_expansion"] == "waystations"
 
 
 class TestPhaseAndFleet:
