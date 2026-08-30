@@ -367,12 +367,12 @@ class TestExtractColoniesDetailed:
                         "stability": 72.5,
                         "crime": 5.3,
                         "free_housing": 10,
+                        "owner": 5,
                     }
                 }
             }
         }
-        country = {"owned_planets": [12]}
-        colonies = _extract_colonies(gamestate, country)
+        colonies = _extract_colonies(gamestate, "5")
         assert len(colonies) == 1
         c = colonies[0]
         assert c["name"] == "Earth"
@@ -385,15 +385,14 @@ class TestExtractColoniesDetailed:
         assert c["free_housing"] == 10
 
     def test_handles_missing_planet_data(self) -> None:
-        gamestate = {"planets": {"planet": {"99": {"name": "Mars"}}}}
-        country = {"owned_planets": [99]}
-        colonies = _extract_colonies(gamestate, country)
+        gamestate = {"planets": {"planet": {"99": {"name": "Mars", "owner": 7}}}}
+        colonies = _extract_colonies(gamestate, "7")
         assert len(colonies) == 1
         assert colonies[0]["name"] == "Mars"
         assert colonies[0]["pops"] == 0
 
     def test_empty(self) -> None:
-        assert _extract_colonies({}, {}) == []
+        assert _extract_colonies({}, "0") == []
 
 
 class TestExtractEconomyEnriched:

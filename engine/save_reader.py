@@ -319,7 +319,7 @@ def _extract_state_for_country(
         "empire": _extract_empire_info(country, display_name),
         "economy": _extract_economy(country),
         "fleets": fleets,
-        "colonies": _extract_colonies(gamestate, country),
+        "colonies": _extract_colonies(gamestate, country_id),
         "known_empires": _extract_known_empires(
             gamestate, country, player_fleet_power=own_fleet_power,
         ),
@@ -663,23 +663,25 @@ def _extract_fleets(gamestate: dict, player_country: dict) -> list[dict]:
 
 
 def _extract_colonies(
-    gamestate: dict, player_country: dict,
+    gamestate: dict, country_id: str,
 ) -> list[dict]:
-    """Extract detailed information about owned planets."""
-    colonies: list[dict] = []
-    owned_planets = player_country.get("owned_planets", [])
-    if not isinstance(owned_planets, (list, tuple)):
-        return colonies
+    """Extract detailed information about owned planets.
 
+    Stellaris 4.4 no longer stores planet IDs in ``owned_planets`` (that field
+    holds a sequential counter), so owned planets are found via the planet
+    ``owner`` field, which still maps planet -> country ID correctly.
+    """
+    colonies: list[dict] = []
     planet_db = gamestate.get("planets", {})
     if isinstance(planet_db, dict):
         planet_db = planet_db.get("planet", planet_db)
     if not isinstance(planet_db, dict):
         return colonies
 
-    for pid in owned_planets:
-        planet = planet_db.get(str(pid), {})
+    for pid, planet in planet_db.items():
         if not isinstance(planet, dict):
+            continue
+        if str(planet.get("owner")) != str(country_id):
             continue
 
         name = planet.get("name", f"Planet_{pid}")
