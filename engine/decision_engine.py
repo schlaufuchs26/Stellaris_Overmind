@@ -15,10 +15,12 @@ The prompt includes:
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass, field
 
 from engine.llm_provider import LLMProvider
+from engine.prompt_cache import PromptCache
 from engine.meta_loader import load_meta
 from engine.ruleset_generator import (
     ALLOWED_ACTIONS,
@@ -62,17 +64,15 @@ class Directive:
         }
 
 
-def build_prompt(
-    ruleset: dict,
-    personality: dict,
-    state: dict,
-    event: str | None,
-) -> str:
-    """Construct the LLM prompt from ruleset, personality, state, and event.
+def build_static_prompt(ruleset: dict, personality: dict, state: dict) -> str:
+    """Build the static context block of the decision prompt.
 
-    The prompt is structured to give the LLM maximum context while
-    constraining output to exactly one action in the required format.
-    Large game states are truncated to fit within the model's context window.
+    Everything that does not change between ticks for a given ruleset and
+    game phase: lead-in constraints, versioned meta, allowed actions,
+    compact ruleset, personality profile, phase priorities, and the
+    tradition/policy/tech/starbase/fleet/weapon guidance. The changing
+    game state is appended separately by build_state_prompt, so the static
+    block can be sent once per phase and cached (ticket #792).
     """
     year = state.get("year", 2200)
     phase = get_phase_priorities(year)
@@ -81,15 +81,7 @@ def build_prompt(
     weapons = get_weapon_meta() if meta.get("weapon_verdicts") else []
     espionage_phase = get_espionage_phase_priority(year)
 
-    # Truncate state to fit prompt budget
-    compact_state = _compact_state(state)
-
-    # Build compact ruleset (drop raw data tables, keep computed values)
-    compact_ruleset = {
-        k: v for k, v in ruleset.items()
-        if k in ("version", "base", "modifiers", "overrides", "government",
-                 "meta_tier", "meta_strategy")
-    }
+    compact_ruleset = _compact_ruleset(ruleset)
 
     ethics = state.get("empire", {}).get("ethics", [])
     tradition_guide = get_tradition_guidance(
@@ -100,12 +92,14 @@ def build_prompt(
     sb_guide = get_starbase_guidance(year)
     mega_names = [m["name"] for m in get_megastructure_guidance(year)]
 
+    # Lead-in trimmed to the constraints that are not duplicated elsewhere
+    # (ticket #792): the role intro, "exactly ONE action", and the format
+    # footer live in ALLOWED ACTIONS / the reply-format block below, so
+    # restating them wastes tokens.
     sections = [
-        "You are the strategic AI advisor for a Stellaris 4.4.6 empire.",
-        "You must choose exactly ONE action from the allowed list.",
-        "You must cite ruleset elements in your reason.",
-        "You must NOT reference mechanics that do not exist in Stellaris 4.4.6.",
-        "You must NOT use information the empire does not know (fog-of-war).",
+        "Stellaris 4.4.6 strategic advisor. Cite ruleset elements in your reason. "
+        "Never use information the empire does not know (fog-of-war). Never "
+        "reference mechanics that do not exist in Stellaris 4.4.6.",
         "",
         f"VERSIONED META ({meta.get('version', ruleset.get('version', '?'))}):",
         meta.get("meta_rules_domestic", "No curated domestic meta is available."),
@@ -149,22 +143,110 @@ def build_prompt(
     if mega_names:
         sections.append(f"MEGASTRUCTURES: consider building {mega_names}")
 
-    sections.extend([
+    return "\n".join(sections)
+
+
+def _compact_ruleset(ruleset: dict) -> dict:
+    """Drop raw data tables from the ruleset, keeping computed values."""
+    return {
+        k: v for k, v in ruleset.items()
+        if k in ("version", "base", "modifiers", "overrides", "government",
+                 "meta_tier", "meta_strategy")
+    }
+
+
+def _ruleset_fingerprint(ruleset: dict) -> str:
+    """Stable identity of the compact ruleset, so a mid-game reform
+    (new ethics/civics → new ruleset) invalidates the static-prompt cache
+    even when the version string is unchanged."""
+    compact = _compact_ruleset(ruleset)
+    raw = json.dumps(compact, sort_keys=True, default=str)
+    return hashlib.sha1(raw.encode()).hexdigest()[:12]
+
+
+def build_state_prompt(state: dict, event: str | None) -> str:
+    """Build the changing part of the decision prompt: the CURRENT STATE
+    block (compacted game state), the triggering event, and the reply
+    format footer. The footer rides with the state part so full prompts
+    keep their historical layout (format instruction last) and state-only
+    deltas stay self-describing for endpoints without conversation memory.
+    """
+    # Truncate state to fit prompt budget
+    compact_state = _compact_state(state)
+
+    parts = [
         "",
         "CURRENT STATE:",
         json.dumps(compact_state, indent=2),
-    ])
-
+    ]
     if event:
-        sections.append(f"\nTRIGGERING EVENT: {event}")
-
-    sections.append(
+        parts.append(f"\nTRIGGERING EVENT: {event}")
+    parts.append(
         "\nRespond in EXACTLY this format:\n"
         "ACTION: <one action from the allowed list>\n"
         "TARGET: <target or NONE>\n"
         "REASON: <must cite ruleset elements and meta rules>"
     )
-    return "\n".join(sections)
+    return "\n".join(parts)
+
+
+def build_prompt(
+    ruleset: dict,
+    personality: dict,
+    state: dict,
+    event: str | None,
+    *,
+    static_prompt: str | None = None,
+) -> str:
+    """Construct the LLM prompt from ruleset, personality, state, and event.
+
+    The prompt is structured to give the LLM maximum context while
+    constraining output to exactly one action in the required format.
+    Large game states are truncated to fit within the model's context window.
+
+    The prompt splits into a static part (ruleset, personality, meta,
+    phase guidance; see build_static_prompt) and the changing game state
+    (build_state_prompt). Pass a cached static_prompt to skip rebuilding
+    the static sections; the result then contains only the state part,
+    which is all that changes between ticks (ticket #792).
+    """
+    if static_prompt is None:
+        static_prompt = build_static_prompt(ruleset, personality, state)
+    return static_prompt + build_state_prompt(state, event)
+
+
+def cached_prompt(
+    cache: PromptCache,
+    cache_key: str,
+    ruleset: dict,
+    personality: dict,
+    state: dict,
+    event: str | None,
+    sent_static: dict[str, str],
+) -> str:
+    """Build the prompt for one decision, sending the static context only
+    when it is new (first decision for this key, game-phase change, or
+    ruleset reform). Every other tick returns only the changing game
+    state, so an endpoint with conversation memory (the fuchs Overmind
+    bridge) sees the static context once and a small delta each turn
+    (ticket #792).
+
+    `sent_static` tracks which static block was already sent per cache
+    key; the caller owns it (and clears it on cache invalidation) so the
+    PromptCache itself stays a pure prefix cache.
+    """
+    year = state.get("year", 2200)
+    phase = get_phase_priorities(year)["phase"]
+    version = str(ruleset.get("version", ""))
+    static = cache.get_or_build(
+        cache_key, phase, version + ":" + _ruleset_fingerprint(ruleset),
+        lambda: build_static_prompt(ruleset, personality, state),
+    )
+    dynamic = build_state_prompt(state, event)
+    if sent_static.get(cache_key) == static:
+        return dynamic
+    sent_static[cache_key] = static
+    return static + dynamic
 
 
 def _compact_state(state: dict) -> dict:

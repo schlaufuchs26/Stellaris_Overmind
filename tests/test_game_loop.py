@@ -6,7 +6,7 @@ import pytest
 
 from engine.bridge import BridgeConfig
 from engine.game_loop import EmpireConfig, GameLoopController, LoopStats
-from engine.llm_provider import StubProvider
+from engine.llm_provider import LLMResponse, StubProvider
 
 
 @pytest.fixture
@@ -67,6 +67,92 @@ class TestTickOnce:
         # tick_once doesn't record (only _tick does), but stats update
         controller.tick_once(early_game_state)
         assert controller.stats.last_action == "CONSOLIDATE"
+
+
+class RecordingProvider(StubProvider):
+    """StubProvider that records every prompt it is asked to complete."""
+
+    def __init__(self) -> None:
+        self.prompts: list[str] = []
+
+    def complete(self, prompt: str) -> LLMResponse:
+        self.prompts.append(prompt)
+        return super().complete(prompt)
+
+
+class TestPromptCaching:
+
+    def test_static_sent_once_then_state_delta(
+        self, empire: EmpireConfig, tmp_path,
+    ) -> None:
+        """Two ticks in the same phase: the first prompt carries the full
+        static context, the second carries only the state delta (ticket
+        #792)."""
+        from engine.recorder import GameRecorder
+
+        provider = RecordingProvider()
+        config = BridgeConfig(bridge_dir=tmp_path / "bridge")
+        recorder = GameRecorder(replay_dir=tmp_path / "replays")
+        controller = GameLoopController(
+            empire=empire,
+            provider=provider,
+            bridge_config=config,
+            recorder=recorder,
+        )
+
+        state1 = {
+            "version": "4.4.6", "year": 2210, "month": 3,
+            "empire": {"ethics": ["Militarist", "Materialist"], "civics": ["Technocracy"]},
+            "economy": {"energy": 100, "minerals": 200, "alloys": 30},
+            "colonies": ["Earth"], "known_empires": [],
+            "fleets": [{"name": "1st", "power": 1500}],
+        }
+        state2 = dict(state1, year=2211, month=6)
+        state2["economy"] = {"energy": 120, "minerals": 210, "alloys": 45}
+        state2["fleets"] = [{"name": "1st", "power": 1800}]
+
+        assert controller.tick_once(state1) is not None
+        assert controller.tick_once(state2) is not None
+
+        assert len(provider.prompts) == 2
+        assert "EMPIRE RULESET" in provider.prompts[0]
+        assert "PERSONALITY PROFILE" in provider.prompts[0]
+        assert "CURRENT STATE:" in provider.prompts[0]
+        # Second tick: no static context, just the state delta
+        assert "EMPIRE RULESET" not in provider.prompts[1]
+        assert "PERSONALITY PROFILE" not in provider.prompts[1]
+        assert "CURRENT STATE:" in provider.prompts[1]
+        assert '"year": 2211' in provider.prompts[1]
+
+    def test_static_resent_after_phase_change(
+        self, empire: EmpireConfig, tmp_path,
+    ) -> None:
+        """Crossing into a new game phase re-sends the static context."""
+        from engine.recorder import GameRecorder
+
+        provider = RecordingProvider()
+        config = BridgeConfig(bridge_dir=tmp_path / "bridge")
+        recorder = GameRecorder(replay_dir=tmp_path / "replays")
+        controller = GameLoopController(
+            empire=empire,
+            provider=provider,
+            bridge_config=config,
+            recorder=recorder,
+        )
+
+        state = {
+            "version": "4.4.6", "year": 2210, "month": 3,
+            "empire": {"ethics": ["Militarist", "Materialist"], "civics": ["Technocracy"]},
+            "economy": {"energy": 100}, "colonies": ["Earth"],
+            "known_empires": [], "fleets": [],
+        }
+        assert controller.tick_once(state) is not None
+        late = dict(state, year=2400, month=1)  # late game
+        assert controller.tick_once(late) is not None
+
+        assert len(provider.prompts) == 2
+        assert "EMPIRE RULESET" in provider.prompts[0]
+        assert "EMPIRE RULESET" in provider.prompts[1]  # re-sent
 
 
 class TestRulesetRefresh:

@@ -22,7 +22,13 @@ from dataclasses import dataclass, field
 
 from engine.bridge import BridgeConfig, BridgeWriter, UnifiedBridge
 from engine.config import MultiAgentConfig, PlannerConfig
-from engine.decision_engine import Directive, build_prompt, parse_llm_response
+from engine.decision_engine import (
+    Directive,
+    build_prompt,
+    cached_prompt,
+    parse_llm_response,
+)
+from engine.prompt_cache import PromptCache
 from engine.llm_provider import LLMProvider, LLMProviderError, StubProvider
 from engine.personality_shards import build_personality
 from engine.recorder import GameRecorder
@@ -203,6 +209,11 @@ class GameLoopController:
         self._running = False
         self._recorder = recorder or GameRecorder()
         self.stats = LoopStats()
+        # Static-prompt cache (ticket #792): the static context block is
+        # built once per game phase and sent only when it changes, so the
+        # bridge session sees a small state-only delta each turn.
+        self._prompt_cache = PromptCache()
+        self._sent_static: dict[str, str] = {}
         self._auto_detect = not empire.ethics  # empty = auto-detect from save
 
         if self._auto_detect:
@@ -356,8 +367,12 @@ class GameLoopController:
         if self._council is not None:
             return self._process_council(state, event)
 
-        # Single-agent path (original)
-        prompt = build_prompt(self._ruleset, self._personality, state, event)
+        # Single-agent path (original); static context is cached and only
+        # re-sent when the phase/ruleset changes (ticket #792).
+        prompt = cached_prompt(
+            self._prompt_cache, "single", self._ruleset, self._personality,
+            state, event, self._sent_static,
+        )
 
         # Query LLM with retries
         directive = self._query_llm(prompt)
@@ -558,6 +573,9 @@ class GameLoopController:
             origin=self._empire.origin,
             government=self._empire.government,
         )
+        # Static context changed (new ethics/civics): force a re-send.
+        self._prompt_cache.invalidate()
+        self._sent_static.clear()
         # Sync council with updated context
         if self._council is not None:
             self._council.update_context(
@@ -623,6 +641,10 @@ class AILoopController:
         # Cache rulesets/personalities per country ID
         self._rulesets: dict[int, dict] = {}
         self._personalities: dict[int, dict] = {}
+        # Static-prompt cache per controller (ticket #792); keys are the
+        # empire country IDs, one static block per AI empire per phase.
+        self._prompt_cache = PromptCache()
+        self._sent_static: dict[str, str] = {}
         # Cache previous states for event detection
         self._previous_states: dict[int, dict] = {}
         # Cache councils for multi-agent mode
@@ -819,8 +841,12 @@ class AILoopController:
         if self._multi_agent_config.enabled:
             return self._process_council(country_id, state, event, ruleset, personality)
 
-        # Single-agent path
-        prompt = build_prompt(ruleset, personality, state, event)
+        # Single-agent path; static context is cached and only re-sent
+        # when the phase/ruleset changes (ticket #792).
+        prompt = cached_prompt(
+            self._prompt_cache, str(country_id), ruleset, personality,
+            state, event, self._sent_static,
+        )
 
         # Query LLM
         t0 = time.monotonic()
@@ -1037,6 +1063,9 @@ class AILoopController:
             ethics=ethics, civics=civics, traits=traits,
             origin=origin, government=government,
         )
+        # Static context changed (new ethics/civics): force a re-send.
+        self._prompt_cache.invalidate()
+        self._sent_static.clear()
 
         # Refresh council if it exists
         if country_id in self._councils:
