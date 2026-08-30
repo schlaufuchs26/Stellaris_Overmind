@@ -17,6 +17,7 @@ from engine.save_reader import (
     _extract_economy,
     _extract_edicts,
     _extract_empire_info,
+    _extract_known_empires,
     _extract_leaders,
     _extract_policies,
     _extract_starbases,
@@ -57,6 +58,70 @@ class TestIntelLabels:
 
     def test_high_level(self) -> None:
         assert _intel_to_label(75) == "high"
+
+
+class TestExtractKnownEmpires:
+
+    def test_includes_country_id(self) -> None:
+        gamestate = {
+            "country": {
+                "0": {"type": "default", "name": "Player"},
+                "7": {"type": "default", "name": {"key": "Tzynn Empire"}},
+            },
+        }
+        player = {
+            "relations_manager": {
+                "relation": [
+                    {"country": 7, "attitude": "hostile", "intel": {"intel": 30}},
+                ],
+            },
+        }
+        empires = _extract_known_empires(gamestate, player, player_fleet_power=0)
+        assert len(empires) == 1
+        assert empires[0]["id"] == 7
+        assert empires[0]["name"] == "Tzynn Empire"
+
+    def test_string_country_id_normalized_to_int(self) -> None:
+        gamestate = {
+            "country": {
+                "0": {"type": "default", "name": "Player"},
+                "9": {"type": "default", "name": "AI Empire"},
+            },
+        }
+        player = {
+            "relations_manager": {
+                "relation": [
+                    {"country": "9", "attitude": "cordial", "intel": 20},
+                ],
+            },
+        }
+        empires = _extract_known_empires(gamestate, player, player_fleet_power=0)
+        assert len(empires) == 1
+        assert empires[0]["id"] == 9
+        assert empires[0]["id"] == int(empires[0]["id"])  # plain int, not str
+
+    def test_non_numeric_country_id_skipped(self) -> None:
+        gamestate = {"country": {"0": {"type": "default", "name": "Player"}}}
+        player = {
+            "relations_manager": {
+                "relation": [{"country": "unknown", "attitude": "hostile"}],
+            },
+        }
+        assert _extract_known_empires(gamestate, player, player_fleet_power=0) == []
+
+    def test_non_default_country_type_skipped(self) -> None:
+        gamestate = {
+            "country": {
+                "0": {"type": "default", "name": "Player"},
+                "7": {"type": "fallen_empire", "name": "Ancient Ones"},
+            },
+        }
+        player = {
+            "relations_manager": {
+                "relation": [{"country": 7, "attitude": "hostile"}],
+            },
+        }
+        assert _extract_known_empires(gamestate, player, player_fleet_power=0) == []
 
     def test_full_level(self) -> None:
         assert _intel_to_label(95) == "full"

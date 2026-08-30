@@ -80,6 +80,17 @@ class TestBuildPrompt:
         prompt = build_prompt(rs, p, early_game_state, "WAR_DECLARED")
         assert "WAR_DECLARED" in prompt
 
+    def test_prompt_documents_prepare_war_targeting(
+        self, une_empire: dict, early_game_state: dict,
+    ) -> None:
+        rs = generate_ruleset(**une_empire)
+        p = build_personality(**une_empire)
+        prompt = build_prompt(rs, p, early_game_state, None)
+        assert "TARGET: <empire id>" in prompt
+        assert "known_empires" in prompt
+        assert "declares war" in prompt
+        assert "war-footing nudge" in prompt
+
 
 class TestPromptSplit:
 

@@ -57,6 +57,7 @@ AI_EVENT_IDS = {
     "COLONIZE": 109,
     "BUILD_STARBASE": 110,
     "ESPIONAGE": 111,
+    "PREPARE_WAR_TARGETED": 120,
 }
 _AI_ACTION_BY_EVENT_ID = {event_id: action for action, event_id in AI_EVENT_IDS.items()}
 _AI_EVENT_COMMAND_PATTERN = re.compile(r"event overmind\.(\d+) ([1-9]\d*)\Z")
@@ -77,6 +78,17 @@ def is_ai_event_command(command: str) -> bool:
     """Return whether *command* is an allowlisted, targeted Overmind event."""
     match = _AI_EVENT_COMMAND_PATTERN.fullmatch(command)
     return match is not None and int(match.group(1)) in _AI_ACTION_BY_EVENT_ID
+
+
+def _as_positive_int(value) -> int | None:
+    """Coerce an empire target (int or digit string from the LLM) to int."""
+    if isinstance(value, bool):
+        return None
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return None
+    return n if n > 0 else None
 
 
 def _sanitize_snapshot_fow(data: dict) -> dict:
@@ -385,11 +397,20 @@ class BridgeWriter:
 
         Creates a JSON audit record and, when configured, an allowlisted console
         event command. The injector consumes the command only after atomic rename.
+
+        PREPARE_WAR with a valid empire target emits the targeted event
+        (overmind.120) scoped at the target empire, which declares war on it.
+        A bare PREPARE_WAR keeps the generic war-footing nudge (overmind.106).
         """
         action = directive.get("action")
         if not isinstance(action, str):
             raise ValueError("AI directive action must be a string")
-        command = build_ai_event_command(country_id, action)
+        target = directive.get("target")
+        if action == "PREPARE_WAR" and _as_positive_int(target) is not None:
+            # Targeted declaration: the event is scoped at the target empire
+            command = build_ai_event_command(_as_positive_int(target), "PREPARE_WAR_TARGETED")
+        else:
+            command = build_ai_event_command(country_id, action)
         self._config.bridge_dir.mkdir(parents=True, exist_ok=True)
         path = self._config.bridge_dir / f"directive_{country_id}.json"
         tmp_path = path.with_suffix(".tmp")

@@ -111,6 +111,53 @@ class TestFogOfWar:
         assert not result.valid
         assert any("fog" in e.lower() for e in result.errors)
 
+    def test_numeric_id_target_accepted(self, early_game_state: dict) -> None:
+        """PREPARE_WAR targeting by known_empires[].id passes FoW check (#793)."""
+        state = dict(early_game_state)
+        state["known_empires"] = [
+            {"id": 7, "name": "Tzynn Empire", "attitude": "Hostile"},
+        ]
+        rs = generate_ruleset(
+            ethics=[], civics=[], traits=[],
+            origin="Prosperous Unification", government="Democracy",
+        )
+        result = validate_directive(
+            {"action": "PREPARE_WAR", "target": 7, "reason": "Attack."},
+            rs, state,
+        )
+        assert result.valid
+
+    def test_string_numeric_id_target_accepted(self, early_game_state: dict) -> None:
+        """LLM output arrives as a string; '7' must resolve to id 7."""
+        state = dict(early_game_state)
+        state["known_empires"] = [
+            {"id": 7, "name": "Tzynn Empire", "attitude": "Hostile"},
+        ]
+        rs = generate_ruleset(
+            ethics=[], civics=[], traits=[],
+            origin="Prosperous Unification", government="Democracy",
+        )
+        result = validate_directive(
+            {"action": "PREPARE_WAR", "target": "7", "reason": "Attack."},
+            rs, state,
+        )
+        assert result.valid
+
+    def test_unknown_numeric_id_rejected(self, early_game_state: dict) -> None:
+        state = dict(early_game_state)
+        state["known_empires"] = [
+            {"id": 7, "name": "Tzynn Empire", "attitude": "Hostile"},
+        ]
+        rs = generate_ruleset(
+            ethics=[], civics=[], traits=[],
+            origin="Prosperous Unification", government="Democracy",
+        )
+        result = validate_directive(
+            {"action": "PREPARE_WAR", "target": 99, "reason": "Attack."},
+            rs, state,
+        )
+        assert not result.valid
+
     def test_fleet_system_is_known(self, early_game_state: dict) -> None:
         """Fleet locations count as known targets."""
         rs = generate_ruleset(

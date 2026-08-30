@@ -107,6 +107,11 @@ def build_static_prompt(ruleset: dict, personality: dict, state: dict) -> str:
         "",
         f"ALLOWED ACTIONS: {', '.join(ALLOWED_ACTIONS)}",
         "",
+        "TARGETING: PREPARE_WAR may carry TARGET: <empire id> using the `id` "
+        "field of a known_empires entry from CURRENT STATE; that declares war "
+        "on that empire. A bare PREPARE_WAR (TARGET: NONE) stays the generic "
+        "war-footing nudge. Other actions ignore TARGET or use NONE.",
+        "",
         "EMPIRE RULESET:",
         json.dumps(compact_ruleset, indent=2, default=str),
         "",

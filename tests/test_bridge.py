@@ -71,6 +71,65 @@ class TestBridgeWriter:
         assert command_path.read_text(encoding="utf-8") == "event overmind.101 42\n"
         assert not command_path.with_suffix(".tmp").exists()
 
+    def test_prepare_war_with_empire_target_uses_targeted_event(
+        self, bridge_config: BridgeConfig,
+    ) -> None:
+        command_dir = bridge_config.bridge_dir / "commands"
+        bridge_config.command_dir = command_dir
+        writer = BridgeWriter(bridge_config)
+
+        writer.write_directive_for(42, {
+            "action": "PREPARE_WAR", "target": 7, "reason": "Attack them.",
+        })
+
+        command_path = command_dir / "overmind_directive_42.command"
+        # The event is scoped at the TARGET empire (7), not the actor (42)
+        assert command_path.read_text(encoding="utf-8") == "event overmind.120 7\n"
+
+    def test_prepare_war_with_string_target_id_uses_targeted_event(
+        self, bridge_config: BridgeConfig,
+    ) -> None:
+        command_dir = bridge_config.bridge_dir / "commands"
+        bridge_config.command_dir = command_dir
+        writer = BridgeWriter(bridge_config)
+
+        # LLM targets arrive as strings from parse_llm_response
+        writer.write_directive_for(42, {
+            "action": "PREPARE_WAR", "target": "7", "reason": "Attack them.",
+        })
+
+        command_path = command_dir / "overmind_directive_42.command"
+        assert command_path.read_text(encoding="utf-8") == "event overmind.120 7\n"
+
+    def test_bare_prepare_war_keeps_generic_nudge(
+        self, bridge_config: BridgeConfig,
+    ) -> None:
+        command_dir = bridge_config.bridge_dir / "commands"
+        bridge_config.command_dir = command_dir
+        writer = BridgeWriter(bridge_config)
+
+        writer.write_directive_for(42, {
+            "action": "PREPARE_WAR", "target": None, "reason": "Build up.",
+        })
+
+        command_path = command_dir / "overmind_directive_42.command"
+        assert command_path.read_text(encoding="utf-8") == "event overmind.106 42\n"
+
+    def test_prepare_war_with_name_target_keeps_generic_nudge(
+        self, bridge_config: BridgeConfig,
+    ) -> None:
+        command_dir = bridge_config.bridge_dir / "commands"
+        bridge_config.command_dir = command_dir
+        writer = BridgeWriter(bridge_config)
+
+        # A non-numeric target (empire name) is not a usable event scope
+        writer.write_directive_for(42, {
+            "action": "PREPARE_WAR", "target": "Tzynn Empire", "reason": "Attack.",
+        })
+
+        command_path = command_dir / "overmind_directive_42.command"
+        assert command_path.read_text(encoding="utf-8") == "event overmind.106 42\n"
+
     def test_rejects_invalid_ai_event_command(self, bridge_config: BridgeConfig) -> None:
         writer = BridgeWriter(bridge_config)
 
@@ -91,14 +150,23 @@ class TestAIEventCommands:
 
         for action, event_id in AI_EVENT_IDS.items():
             assert f"id = overmind.{event_id}" in content
+            if action == "PREPARE_WAR_TARGETED":
+                # Event 120 declares war directly; no overmind_action_* flag
+                assert "declare_war" in content
+                continue
             assert f"overmind_action_{action.lower()} = yes" in content
 
     def test_builds_allowlisted_command(self) -> None:
         assert build_ai_event_command(3, "ESPIONAGE") == "event overmind.111 3"
+        assert (
+            build_ai_event_command(5, "PREPARE_WAR_TARGETED")
+            == "event overmind.120 5"
+        )
 
     @pytest.mark.parametrize("command", [
         "event overmind.101 3",
         "event overmind.111 42",
+        "event overmind.120 42",
     ])
     def test_recognizes_allowlisted_command(self, command: str) -> None:
         assert is_ai_event_command(command)
@@ -107,6 +175,7 @@ class TestAIEventCommands:
         "effect add_resource = { alloys = 100 }",
         "event overmind.101 0",
         "event overmind.112 3",
+        "event overmind.120 0",
         "event overmind.101 3; play 3",
     ])
     def test_rejects_non_allowlisted_command(self, command: str) -> None:

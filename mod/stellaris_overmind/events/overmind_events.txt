@@ -157,6 +157,62 @@ country_event = {
 	immediate = { set_country_flag = overmind_active overmind_action_espionage = yes }
 }
 
+# ============================================================
+# Event 120: Targeted war declaration (PREPARE_WAR + TARGET)
+#
+# The external injector calls `event overmind.120 <target_country_id>`.
+# THIS is the TARGET empire (the event scope). The Overmind empire is
+# found via the overmind_active flag and declares war on `this`.
+# ============================================================
+country_event = {
+	id = overmind.120
+	hide_window = yes
+	is_triggered_only = yes
+	trigger = {
+		is_ai = yes
+		is_country_type = default
+	}
+	immediate = {
+		any_country = {
+			limit = {
+				has_country_flag = overmind_active
+				is_at_war_with = prev
+			}
+			# Already at war with the target: fall back to the generic nudge
+			overmind_action_prepare_war = yes
+		}
+		any_country = {
+			limit = {
+				has_country_flag = overmind_active
+				NOT = { is_at_war_with = prev }
+				can_declare_war = {
+					target = prev
+					attacker_war_goal = wg_conquest
+				}
+			}
+			declare_war = {
+				target = prev
+				name = "Overmind Conquest"
+				attacker_war_goal = wg_conquest
+			}
+		}
+		# No valid declaration possible: keep the war-footing nudge
+		any_country = {
+			limit = {
+				has_country_flag = overmind_active
+				NOT = { is_at_war_with = prev }
+				NOT = {
+					can_declare_war = {
+						target = prev
+						attacker_war_goal = wg_conquest
+					}
+				}
+			}
+			overmind_action_prepare_war = yes
+		}
+	}
+}
+
 
 # ============================================================
 # Event 100: Legacy monthly directive reader (heartbeat)

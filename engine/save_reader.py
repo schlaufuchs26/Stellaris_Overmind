@@ -761,6 +761,19 @@ def _extract_known_empires(
         if target_id is None:
             continue
 
+        # Normalize to a plain int: the save parser coerces numeric strings
+        # to int, but defensive normalization keeps the id stable regardless
+        # of source (str keys in `countries`, int values in `relation`).
+        try:
+            empire_id = int(target_id)
+        except (TypeError, ValueError):
+            log.warning(
+                "Skipping relation with non-numeric country id %r", target_id,
+            )
+            continue
+        if empire_id <= 0:
+            continue
+
         other = countries.get(str(target_id), {})
         if not isinstance(other, dict):
             continue
@@ -778,6 +791,7 @@ def _extract_known_empires(
         attitude = str(rel.get("attitude", "neutral"))
 
         entry: dict = {
+            "id": empire_id,
             "name": str(name),
             "attitude": attitude,
             "intel_level": intel_label,

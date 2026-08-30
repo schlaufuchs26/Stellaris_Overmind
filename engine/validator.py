@@ -95,21 +95,27 @@ def validate_directive(
             )
 
     # --- 3b. Empire-targeting actions must reference known empires ---
-    # Skip if target contains unresolved localization keys (%ADJ% etc.)
-    if (
-        target is not None
-        and action in _EMPIRE_ACTIONS
-        and "%" not in target
-    ):
-        known_empires = {
-            e.get("name") for e in state.get("known_empires", [])
-            if isinstance(e, dict) and e.get("name")
-        }
-        if target not in known_empires:
-            errors.append(
-                f"Target empire '{target}' is not known — "
-                "possible fog-of-war violation"
-            )
+    # Targets may be empire names OR numeric ids (known_empires[].id, used
+    # by PREPARE_WAR targeting, ticket #793). Skip if target contains
+    # unresolved localization keys (%ADJ% etc.).
+    if target is not None and action in _EMPIRE_ACTIONS:
+        if isinstance(target, str) and "%" in target:
+            pass  # unresolved localization key, can't verify
+        else:
+            known_names = {
+                e.get("name") for e in state.get("known_empires", [])
+                if isinstance(e, dict) and e.get("name")
+            }
+            known_ids = {
+                e.get("id") for e in state.get("known_empires", [])
+                if isinstance(e, dict) and isinstance(e.get("id"), int)
+            }
+            known_targets = known_names | {str(i) for i in known_ids} | known_ids
+            if target not in known_targets:
+                errors.append(
+                    f"Target empire '{target}' is not known; "
+                    "possible fog-of-war violation"
+                )
 
     # --- 4. Origin constraints ---
     _validate_origin_constraints(action, params, overrides, errors)
